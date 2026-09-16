@@ -220,12 +220,13 @@
     'mediafire.com', 'drive.google.com', 'mega.nz', 'dropbox.com',
     '1fichier.com', 'pixeldrain.com', 'gofile.io', 'krakenfiles.com',
     'qiwi.gg', 'github.com', 'sourceforge.net', 'wetransfer.com',
-    'sendgb.com', 'upload.ee'
+    'sendgb.com', 'upload.ee', 'hubcloud', 'gamerxyt', 'fsl',
+    'pixel', 'buzz', 'fastdl', 'racaty', 'streamwish', 'filepress'
   ];
 
   const AD_DOMAINS = [
-    'adsterra', 'propellerads', 'clickadu', 'doubleclick', 'onclick',
-    'yllix', 'popads', 'popcash', 'exoclick', 'trafficjunky', 'bet', 'casino'
+    'adsterra', 'propellerads', 'clickadu', 'doubleclick',
+    'yllix', 'popads', 'popcash', 'exoclick', 'trafficjunky', '1xbet', 'bet365', 'casino'
   ];
 
   function highlightRealDownloadLinks() {
@@ -238,24 +239,26 @@
 
       const isFileExtension = FILE_EXTENSIONS.some((ext) => href.includes(ext));
       const isTrustedHost = TRUSTED_FILE_HOSTS.some((host) => href.includes(host));
+      const isServerButton = /server|fsl|pixel|buzz|hubcloud|10gbps/i.test(text + ' ' + href);
 
-      if (isFileExtension || isTrustedHost) {
+      if (isFileExtension || isTrustedHost || isServerButton) {
         if (!a.classList.contains('directdrop-real-download-target')) {
           a.classList.add('directdrop-real-download-target');
           
           if (!a.querySelector('.directdrop-real-download-badge')) {
             const badge = document.createElement('span');
             badge.className = 'directdrop-real-download-badge';
-            badge.innerHTML = '⚡ Verified File';
+            badge.innerHTML = isServerButton ? '⚡ Verified Server' : '⚡ Verified File';
             a.appendChild(badge);
           }
         }
+        return; // Don't flag as fake ad
       }
 
       const isDeceptiveText = /^(download|start download|download now|direct download|install)$/i.test(text);
       const isAdDomain = AD_DOMAINS.some((d) => href.includes(d));
 
-      if (isDeceptiveText && (isAdDomain || (!isFileExtension && !isTrustedHost && href.includes('javascript')))) {
+      if (isDeceptiveText && isAdDomain) {
         if (!a.classList.contains('directdrop-fake-ad-dimmed')) {
           a.classList.add('directdrop-fake-ad-dimmed');
           if (!a.querySelector('.directdrop-fake-ad-badge')) {
@@ -472,9 +475,27 @@
     });
   }
 
-  // 14. Master Runner
+  // 14. Anti-Anti-Adblock (Unfreeze pages & remove Adblock detection walls)
+  function defeatAntiAdblock() {
+    const adblockModals = document.querySelectorAll(
+      '[id*="adblock"], [class*="adblock"], [id*="antiad"], [class*="anti-ad"], .adblock-overlay, .adb-detected, #fba-overlay'
+    );
+    adblockModals.forEach((m) => {
+      // Don't remove our own UI
+      if (m.id?.startsWith('directdrop') || m.className?.toString().includes('directdrop')) return;
+      m.remove();
+    });
+
+    if (document.body) {
+      if (document.body.style.filter?.includes('blur')) document.body.style.filter = 'none';
+      if (document.body.style.overflow === 'hidden') document.body.style.overflow = 'auto';
+    }
+  }
+
+  // 15. Master Runner
   function runProtectionCycle() {
     neutralizeTraps();
+    defeatAntiAdblock();
     processRedirectLinks();
     highlightRealDownloadLinks();
     unlockHiddenButtons();

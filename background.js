@@ -1,4 +1,4 @@
-// DirectDrop v2.0 Background Service Worker
+// DirectDrop v2.1 Background Service Worker
 const DEFAULT_SETTINGS = {
   enabled: true,
   killTraps: true,
@@ -24,7 +24,6 @@ chrome.runtime.onInstalled.addListener(() => {
     if (!result.settings) {
       chrome.storage.local.set({ settings: DEFAULT_SETTINGS });
     } else {
-      // Merge new settings
       chrome.storage.local.set({ settings: { ...DEFAULT_SETTINGS, ...result.settings } });
     }
     if (!result.stats) {
@@ -49,7 +48,7 @@ chrome.runtime.onInstalled.addListener(() => {
     });
   });
 
-  console.log('[DirectDrop v2.0] Service Worker installed with Context Menus & Tab Terminator.');
+  console.log('[DirectDrop v2.1] Service Worker installed with Precision Tab Terminator & Whitelist.');
 });
 
 // Update badge count
@@ -109,13 +108,20 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-// 4. Instant Tab Terminator (Auto-kill deceptive ad / betting / popup tabs)
-const AD_URL_PATTERNS = [
-  'adsterra', 'propellerads', 'clickadu', 'doubleclick', 'onclick',
+// 4. Instant Tab Terminator (With Download & Server Whitelist)
+const DOWNLOAD_WHITELIST = [
+  'hubcloud', 'gamerxyt', 'fsl', 'drive.google', 'mediafire', 'mega.nz',
+  'pixeldrain', 'gofile', '1fichier', 'buzz', 'pixel', 'telegram',
+  'fastdl', 'racaty', 'streamwish', 'filepress', 'dropbox',
+  '.mkv', '.mp4', '.zip', '.rar', '.7z', '.exe', '.iso', 'download'
+];
+
+const STRICT_AD_URL_PATTERNS = [
+  'adsterra', 'propellerads', 'clickadu', 'doubleclick',
   'yllix', 'popads', 'popcash', 'exoclick', 'trafficjunky', 'ad-maven',
   'hilltopads', 'richpush', 'juicyads', 'monetag', '1xbet', 'bet365',
   'parimatch', 'melbet', 'mostbet', 'stake.com', 'casino', 'lucky-wheel',
-  'cleaner-update', 'system-infected', 'congratulations-winner', 'tracking'
+  'cleaner-update', 'system-infected', 'congratulations-winner'
 ];
 
 function checkAndKillTab(tabId, url) {
@@ -126,10 +132,19 @@ function checkAndKillTab(tabId, url) {
     if (settings.enabled === false || settings.tabTerminator === false) return;
 
     const lower = url.toLowerCase();
-    const isSpam = AD_URL_PATTERNS.some(pat => lower.includes(pat));
+
+    // 1. Never kill whitelisted download or movie servers
+    const isWhitelisted = DOWNLOAD_WHITELIST.some(w => lower.includes(w));
+    if (isWhitelisted) {
+      console.log('[DirectDrop] ✅ Retained legitimate download tab:', url);
+      return;
+    }
+
+    // 2. Only kill if strictly matched with spam/ad patterns
+    const isSpam = STRICT_AD_URL_PATTERNS.some(pat => lower.includes(pat));
 
     if (isSpam) {
-      console.warn('[DirectDrop] 🔫 Terminating spam tab:', url);
+      console.warn('[DirectDrop] 🔫 Terminating confirmed spam tab:', url);
       chrome.tabs.remove(tabId, () => {
         if (!chrome.runtime.lastError) {
           const stats = data.stats || { ...DEFAULT_STATS };
