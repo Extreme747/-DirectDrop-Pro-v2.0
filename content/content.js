@@ -1,4 +1,4 @@
-// DirectDrop v2.0 Content Script (runs in ISOLATED world)
+// DirectDrop Pro v3.0 OLED Edition - Content Script
 (function () {
   'use strict';
 
@@ -10,9 +10,13 @@
     highlightLinks: true,
     unwrapRedirects: true,
     tabTerminator: true,
+    antiAdblock: true,
     batchGrabber: true,
-    autoStepClicker: true,
-    streamSniffer: true
+    qualityFilter: true,
+    subtitleFinder: true,
+    cloudUnlocker: true,
+    streamSniffer: true,
+    rpcUrl: 'http://localhost:6800/jsonrpc'
   };
 
   let stats = {
@@ -22,7 +26,7 @@
     tabsTerminated: 0
   };
 
-  // 1. Load settings from storage
+  // 1. Load settings & stats from chrome storage
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(['settings', 'stats'], (res) => {
       if (res.settings) config = { ...config, ...res.settings };
@@ -30,7 +34,7 @@
     });
   }
 
-  // 2. Ensure page-script is injected into DOM (fallback for MAIN world)
+  // 2. Ensure page-script is injected into DOM
   try {
     const s = document.createElement('script');
     s.src = chrome.runtime.getURL('content/page-script.js');
@@ -46,7 +50,7 @@
     if (detail.action === 'popup_blocked') {
       stats.popupsBlocked++;
       updateStats('popupsBlocked');
-      showToast('🛡️ Blocked popup ad tab!', 'shield');
+      showToast('🛡️ Blocked deceptive popup tab!', 'shield');
     } else if (detail.action === 'timer_accelerated') {
       stats.linksBypassed++;
       updateStats('linksBypassed');
@@ -54,8 +58,8 @@
     }
   });
 
-  // 4. Listen for runtime messages from background service worker
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // 4. Runtime message listener
+  chrome.runtime.onMessage.addListener((request) => {
     if (request.action === 'copy_to_clipboard' && request.text) {
       copyToClipboard(request.text);
       showToast(request.msg || '⚡ Copied to clipboard!', 'bolt');
@@ -64,7 +68,6 @@
     }
   });
 
-  // 5. Update stats in chrome storage
   function updateStats(key) {
     if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
       chrome.runtime.sendMessage({ action: 'increment_stat', stat: key });
@@ -84,7 +87,7 @@
     }
   }
 
-  // 6. Toast Notification
+  // 5. Toast Notifications (OLED Theme)
   let toastContainer = null;
   let lastToastTime = 0;
 
@@ -103,7 +106,7 @@
     toast.className = 'directdrop-toast';
     toast.innerHTML = `
       <div class="directdrop-toast-icon">${type === 'shield' ? '🛡️' : '⚡'}</div>
-      <div><strong>DirectDrop:</strong> ${message}</div>
+      <div><strong>DirectDrop Pro:</strong> ${message}</div>
     `;
 
     toastContainer.appendChild(toast);
@@ -115,7 +118,7 @@
     }, 2800);
   }
 
-  // 7. Trap Neutralizer: Detect & Remove Invisible Click Overlays
+  // 6. Trap Neutralizer: Full-Screen Transparent Overlay Remover
   function neutralizeTraps() {
     if (!config.enabled || !config.killTraps) return;
 
@@ -150,17 +153,35 @@
       if (el.tagName === 'A' && el.getAttribute('target') === '_blank') {
         const rect = el.getBoundingClientRect();
         if (rect.width >= viewWidth * 0.8 && rect.height >= viewHeight * 0.8) {
-          console.log('[DirectDrop] 🎯 Removed full-screen ad link overlay:', el);
+          console.log('[DirectDrop] 🎯 Removed full-screen ad overlay:', el);
           el.remove();
           stats.trapsNeutralized++;
           updateStats('trapsNeutralized');
-          showToast('🛡️ Removed full-screen ad link overlay!', 'shield');
+          showToast('🛡️ Removed full-screen ad overlay!', 'shield');
         }
       }
     });
   }
 
-  // 8. Unshortener & Direct Link Extractor
+  // 7. Anti-Anti-AdBlocker (Unlocks blurred & frozen pages)
+  function defeatAntiAdblock() {
+    if (!config.enabled || !config.antiAdblock) return;
+
+    const adblockModals = document.querySelectorAll(
+      '[id*="adblock"], [class*="adblock"], [id*="antiad"], [class*="anti-ad"], .adblock-overlay, .adb-detected, #fba-overlay'
+    );
+    adblockModals.forEach((m) => {
+      if (m.id?.startsWith('directdrop') || m.className?.toString().includes('directdrop')) return;
+      m.remove();
+    });
+
+    if (document.body) {
+      if (document.body.style.filter?.includes('blur')) document.body.style.filter = 'none';
+      if (document.body.style.overflow === 'hidden') document.body.style.overflow = 'auto';
+    }
+  }
+
+  // 8. Redirect Unwrapper
   const REDIRECT_PARAMS = [
     'url', 'dest', 'target', 'link', 'to', 'u', 'redirect', 'redirect_url', 
     'destination', 'dl', 'download_url', 'out', 'r'
@@ -169,7 +190,6 @@
   function unwrapUrl(href) {
     try {
       const urlObj = new URL(href, window.location.href);
-
       for (const param of REDIRECT_PARAMS) {
         const val = urlObj.searchParams.get(param);
         if (!val) continue;
@@ -209,7 +229,7 @@
     });
   }
 
-  // 9. Real Download Link Detector & Highlighter
+  // 9. Real Download & Movie Server Highlighter
   const FILE_EXTENSIONS = [
     '.zip', '.rar', '.7z', '.tar', '.gz', '.xz', '.bz2', '.iso',
     '.exe', '.msi', '.apk', '.dmg', '.pkg', '.deb', '.rpm', '.appx',
@@ -247,12 +267,12 @@
           
           if (!a.querySelector('.directdrop-real-download-badge')) {
             const badge = document.createElement('span');
-            badge.className = 'directdrop-real-download-badge';
+            badge.className = 'directdrop-real-download-badge' + (isServerButton ? ' directdrop-server-badge' : '');
             badge.innerHTML = isServerButton ? '⚡ Verified Server' : '⚡ Verified File';
             a.appendChild(badge);
           }
         }
-        return; // Don't flag as fake ad
+        return;
       }
 
       const isDeceptiveText = /^(download|start download|download now|direct download|install)$/i.test(text);
@@ -272,7 +292,7 @@
     });
   }
 
-  // 10. Unlock Hidden Download Buttons & Timers
+  // 10. Unlock Hidden Download Buttons
   function unlockHiddenButtons() {
     if (!config.enabled || !config.skipTimers) return;
 
@@ -295,8 +315,32 @@
     });
   }
 
-  // 11. 📦 Feature 1: Batch Episode & Multi-Link Grabber
+  // 11. Filename Cleaner & Quality Classifier
+  function cleanFileName(raw) {
+    if (!raw) return 'Direct File';
+    return raw
+      .replace(/https?:\/\/[^\s]+/g, '')
+      .replace(/www\.[a-z0-9\-]+\.[a-z]{2,}/gi, '')
+      .replace(/\[\s*HDHub4u[a-z0-9\.\-]*\s*\]/gi, '')
+      .replace(/-HDHub4u\.[a-z0-9]+/gi, '')
+      .replace(/\.Ms\./gi, '.')
+      .replace(/[\._]+/g, ' ')
+      .trim();
+  }
+
+  function detectQuality(text) {
+    const t = (text || '').toLowerCase();
+    if (/2160p|4k|uhd|ds4k/i.test(t)) return '4K';
+    if (/1080p|fhd/i.test(t)) return '1080p';
+    if (/720p|hd/i.test(t)) return '720p';
+    if (/480p|sd|300mb/i.test(t)) return '480p';
+    return 'Other';
+  }
+
+  // 12. 📦 Batch Episode Grabber (with Quality Tabs & Aria2 RPC)
   let grabbedLinks = [];
+  let currentActiveQuality = 'All';
+  let currentSearchQuery = '';
 
   function scanDownloadableLinks() {
     const validLinks = [];
@@ -306,17 +350,19 @@
       let href = a.getAttribute('href');
       if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
 
-      // Unwrap if needed
       const unwrapped = unwrapUrl(href) || href;
       const lower = unwrapped.toLowerCase();
 
       const isFile = FILE_EXTENSIONS.some((ext) => lower.includes(ext));
       const isHost = TRUSTED_FILE_HOSTS.some((host) => lower.includes(host));
+      const isServerBtn = /fsl|pixel|buzz|hubcloud|server/i.test(a.innerText || '');
 
-      if ((isFile || isHost) && !seenUrls.has(unwrapped)) {
+      if ((isFile || isHost || isServerBtn) && !seenUrls.has(unwrapped)) {
         seenUrls.add(unwrapped);
-        const linkName = (a.innerText || a.getAttribute('title') || unwrapped.split('/').pop().split('?')[0]).trim();
-        validLinks.push({ name: linkName || 'Direct File', url: unwrapped });
+        const rawName = (a.innerText || a.getAttribute('title') || unwrapped.split('/').pop().split('?')[0]).trim();
+        const cleaned = cleanFileName(rawName);
+        const quality = detectQuality(rawName + ' ' + (document.title || ''));
+        validLinks.push({ name: cleaned, rawName, url: unwrapped, quality });
       }
     });
 
@@ -342,108 +388,210 @@
   }
 
   function openBatchGrabberModal() {
-    let modal = document.getElementById('directdrop-grabber-modal');
-    if (modal) modal.remove();
+    let backdrop = document.getElementById('directdrop-grabber-backdrop');
+    if (backdrop) backdrop.remove();
 
-    modal = document.createElement('div');
+    backdrop = document.createElement('div');
+    backdrop.id = 'directdrop-grabber-backdrop';
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+
+    const modal = document.createElement('div');
     modal.id = 'directdrop-grabber-modal';
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
 
-    let linksHtml = grabbedLinks.map((item, index) => `
+    renderModalContent();
+  }
+
+  function getFilteredLinks() {
+    return grabbedLinks.filter((item) => {
+      const matchQuality = currentActiveQuality === 'All' || item.quality === currentActiveQuality;
+      const matchSearch = !currentSearchQuery || item.name.toLowerCase().includes(currentSearchQuery.toLowerCase());
+      return matchQuality && matchSearch;
+    });
+  }
+
+  function renderModalContent() {
+    const modal = document.getElementById('directdrop-grabber-modal');
+    if (!modal) return;
+
+    const count4k = grabbedLinks.filter(l => l.quality === '4K').length;
+    const count1080p = grabbedLinks.filter(l => l.quality === '1080p').length;
+    const count720p = grabbedLinks.filter(l => l.quality === '720p').length;
+    const count480p = grabbedLinks.filter(l => l.quality === '480p').length;
+
+    const filtered = getFilteredLinks();
+
+    let linksHtml = filtered.map((item, idx) => `
       <div class="directdrop-link-row">
-        <span class="directdrop-link-name">#${index + 1} ${escapeHtml(item.name)}</span>
+        <div style="display: flex; align-items: center;">
+          <span class="directdrop-quality-tag ${item.quality === '4K' ? 'directdrop-quality-4k' : ''}">${item.quality}</span>
+          <span class="directdrop-link-name">#${idx + 1} ${escapeHtml(item.name)}</span>
+        </div>
         <a href="${item.url}" target="_blank" class="directdrop-btn" style="padding: 4px 10px; font-size: 11px; text-decoration: none;">⬇ Open</a>
       </div>
     `).join('');
 
     modal.innerHTML = `
       <div class="directdrop-modal-header">
-        <div class="directdrop-modal-title">📦 Batch Links Grabber (${grabbedLinks.length} Files Found)</div>
+        <div class="directdrop-modal-title">⚡ Batch Episode Grabber (${grabbedLinks.length} Links)</div>
         <button class="directdrop-modal-close" id="btnDirectDropCloseModal">&times;</button>
       </div>
-      <div class="directdrop-links-list">
-        ${linksHtml || '<div style="color: #94a3b8; text-align: center; padding: 20px;">No downloadable file links detected on this page.</div>'}
+
+      <div class="directdrop-filter-row">
+        <button class="directdrop-pill-btn ${currentActiveQuality === 'All' ? 'active' : ''}" data-q="All">All (${grabbedLinks.length})</button>
+        ${count4k ? `<button class="directdrop-pill-btn ${currentActiveQuality === '4K' ? 'active' : ''}" data-q="4K">4K UHD (${count4k})</button>` : ''}
+        ${count1080p ? `<button class="directdrop-pill-btn ${currentActiveQuality === '1080p' ? 'active' : ''}" data-q="1080p">1080p FHD (${count1080p})</button>` : ''}
+        ${count720p ? `<button class="directdrop-pill-btn ${currentActiveQuality === '720p' ? 'active' : ''}" data-q="720p">720p HD (${count720p})</button>` : ''}
+        ${count480p ? `<button class="directdrop-pill-btn ${currentActiveQuality === '480p' ? 'active' : ''}" data-q="480p">480p (${count480p})</button>` : ''}
+        <input type="text" class="directdrop-search-input" id="directdropSearchInput" placeholder="Filter episodes..." value="${escapeHtml(currentSearchQuery)}">
       </div>
+
+      <div class="directdrop-links-list">
+        ${linksHtml || '<div style="color: #71717a; text-align: center; padding: 24px;">No files matching this quality/filter.</div>'}
+      </div>
+
       <div class="directdrop-modal-actions">
-        <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropExportTxt">📄 Export .txt</button>
-        <button class="directdrop-btn" id="btnDirectDropCopyAll">📋 Copy All for IDM</button>
+        <div style="display: flex; gap: 8px;">
+          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropFindSubs">💬 Find Subtitles (.SRT)</button>
+          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropExportTxt">📄 Export .txt</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="directdrop-btn directdrop-btn-rpc" id="btnDirectDropSendRpc">🚀 Send to Motrix/Aria2</button>
+          <button class="directdrop-btn" id="btnDirectDropCopyAll">📋 Copy Selected for IDM</button>
+        </div>
       </div>
     `;
 
-    document.body.appendChild(modal);
-
-    // Event listeners
-    document.getElementById('btnDirectDropCloseModal').onclick = () => modal.remove();
-
-    document.getElementById('btnDirectDropCopyAll').onclick = () => {
-      const text = grabbedLinks.map(l => l.url).join('\n');
-      copyToClipboard(text);
-      showToast(`⚡ Copied ${grabbedLinks.length} links for IDM / JDownloader!`, 'bolt');
+    // Event handlers
+    document.getElementById('btnDirectDropCloseModal').onclick = () => {
+      document.getElementById('directdrop-grabber-backdrop')?.remove();
     };
 
+    modal.querySelectorAll('.directdrop-pill-btn').forEach((btn) => {
+      btn.onclick = () => {
+        currentActiveQuality = btn.getAttribute('data-q');
+        renderModalContent();
+      };
+    });
+
+    const searchInp = document.getElementById('directdropSearchInput');
+    searchInp.oninput = (e) => {
+      currentSearchQuery = e.target.value;
+      renderModalContent();
+      const updatedInp = document.getElementById('directdropSearchInput');
+      if (updatedInp) {
+        updatedInp.focus();
+        updatedInp.setSelectionRange(updatedInp.value.length, updatedInp.value.length);
+      }
+    };
+
+    // Copy All for IDM
+    document.getElementById('btnDirectDropCopyAll').onclick = () => {
+      const activeList = getFilteredLinks();
+      const text = activeList.map(l => l.url).join('\n');
+      copyToClipboard(text);
+      showToast(`⚡ Copied ${activeList.length} links for IDM / JDownloader!`, 'bolt');
+    };
+
+    // Export TXT
     document.getElementById('btnDirectDropExportTxt').onclick = () => {
-      const text = grabbedLinks.map(l => l.url).join('\n');
+      const activeList = getFilteredLinks();
+      const text = activeList.map(l => l.url).join('\n');
       const blob = new Blob([text], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'download_links.txt';
+      a.download = `${cleanFileName(document.title || 'download_links')}.txt`;
       a.click();
       URL.revokeObjectURL(a.href);
     };
+
+    // Send to Motrix / Aria2 JSON-RPC
+    document.getElementById('btnDirectDropSendRpc').onclick = () => {
+      const activeList = getFilteredLinks();
+      sendToAria2Rpc(activeList.map(l => l.url));
+    };
+
+    // Find Subtitles (.SRT)
+    document.getElementById('btnDirectDropFindSubs').onclick = () => {
+      const movieQuery = cleanFileName(document.title || '').replace(/download|full movie|watch online|hindi|line/gi, '').trim();
+      const searchUrl = `https://subsource.net/subtitles?search=${encodeURIComponent(movieQuery)}`;
+      window.open(searchUrl, '_blank');
+      showToast(`💬 Searching subtitles for: "${movieQuery}"`, 'bolt');
+    };
   }
 
-  function escapeHtml(str) {
-    return (str || '').replace(/[&<>"']/g, function (m) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+  // 13. Motrix / Aria2 JSON-RPC Sender
+  function sendToAria2Rpc(urls) {
+    if (!urls || !urls.length) return;
+    const rpcEndpoint = config.rpcUrl || 'http://localhost:6800/jsonrpc';
+
+    showToast(`🚀 Sending ${urls.length} links to Motrix / Aria2...`, 'bolt');
+
+    // Send each URL sequentially via JSON-RPC
+    let successCount = 0;
+    let failedCount = 0;
+
+    urls.forEach((url, i) => {
+      const payload = {
+        jsonrpc: '2.0',
+        id: `directdrop_${Date.now()}_${i}`,
+        method: 'aria2.addUri',
+        params: [[url], {}]
+      };
+
+      fetch(rpcEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.result) {
+          successCount++;
+        } else {
+          failedCount++;
+        }
+        if (successCount + failedCount === urls.length) {
+          if (successCount > 0) {
+            showToast(`✅ ${successCount} downloads queued in Motrix / Aria2!`, 'bolt');
+          } else {
+            showToast(`⚠️ Could not reach Aria2/Motrix on ${rpcEndpoint}. Make sure it is running.`, 'shield');
+          }
+        }
+      })
+      .catch(() => {
+        failedCount++;
+        if (successCount + failedCount === urls.length && successCount === 0) {
+          showToast(`⚠️ Aria2/Motrix not running on ${rpcEndpoint}. Please start Motrix.`, 'shield');
+        }
+      });
     });
   }
 
-  // 12. 🤖 Feature 2: Auto Multi-Step Clicker
-  let lastAutoClickedEl = null;
+  // 14. Google Drive Quota & TeraBox Unlocker
+  function cloudLockerUnlocker() {
+    if (!config.enabled || !config.cloudUnlocker) return;
 
-  function autoStepClicker() {
-    if (!config.enabled || !config.autoStepClicker) return;
-
-    const stepPatterns = [
-      /click here to continue/i,
-      /proceed to download/i,
-      /get link/i,
-      /generate link/i,
-      /verify to continue/i,
-      /continue to download/i,
-      /step \d\/\d/i,
-      /create download link/i
-    ];
-
-    const candidates = document.querySelectorAll('button, a, input[type="submit"], input[type="button"], .btn, .btn-primary');
-    for (const el of candidates) {
-      // Ignore disabled or already processed buttons
-      if (el.hasAttribute('disabled') || el.style.display === 'none' || el === lastAutoClickedEl) continue;
-      if (el.closest('#directdrop-grabber-modal') || el.id?.startsWith('directdrop')) continue;
-
-      const text = (el.innerText || el.value || '').trim();
-      const idClass = (el.id + ' ' + el.className).toLowerCase();
-
-      const matchesPattern = stepPatterns.some(p => p.test(text)) || idClass.includes('getlink') || idClass.includes('btn-step');
-
-      if (matchesPattern && el.offsetParent !== null) {
-        lastAutoClickedEl = el;
-        el.classList.add('directdrop-auto-click-target');
-        console.log('[DirectDrop] 🤖 Auto-step detected:', text, el);
-
-        setTimeout(() => {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          setTimeout(() => {
-            el.click();
-            showToast(`🤖 Auto-proceeded: "${text.substring(0, 20)}..."`, 'bolt');
-          }, 600);
-        }, 800);
-
-        break;
+    // Detect Google Drive "quota exceeded"
+    if (window.location.hostname.includes('drive.google.com') && document.body?.innerText?.includes('quota exceeded')) {
+      const fileId = new URL(window.location.href).searchParams.get('id');
+      if (fileId && !document.getElementById('directdrop-gdrive-bypass')) {
+        const box = document.createElement('div');
+        box.id = 'directdrop-gdrive-bypass';
+        box.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#10b981;color:#000;padding:12px 24px;border-radius:12px;font-weight:700;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,0.5);cursor:pointer;';
+        box.innerHTML = '⚡ DirectDrop: Bypass GDrive Quota (Mirror Download)';
+        box.onclick = () => {
+          window.open(`https://api.bypass.vip/gdrive?id=${fileId}`, '_blank');
+        };
+        document.body.appendChild(box);
       }
     }
   }
 
-  // 13. 🎬 Feature 4: Video Stream Sniffer
+  // 15. Video Stream Sniffer
   function sniffVideoStreams() {
     if (!config.enabled || !config.streamSniffer) return;
 
@@ -475,24 +623,13 @@
     });
   }
 
-  // 14. Anti-Anti-Adblock (Unfreeze pages & remove Adblock detection walls)
-  function defeatAntiAdblock() {
-    const adblockModals = document.querySelectorAll(
-      '[id*="adblock"], [class*="adblock"], [id*="antiad"], [class*="anti-ad"], .adblock-overlay, .adb-detected, #fba-overlay'
-    );
-    adblockModals.forEach((m) => {
-      // Don't remove our own UI
-      if (m.id?.startsWith('directdrop') || m.className?.toString().includes('directdrop')) return;
-      m.remove();
+  function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, function (m) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
     });
-
-    if (document.body) {
-      if (document.body.style.filter?.includes('blur')) document.body.style.filter = 'none';
-      if (document.body.style.overflow === 'hidden') document.body.style.overflow = 'auto';
-    }
   }
 
-  // 15. Master Runner
+  // 16. Master Protection Cycle
   function runProtectionCycle() {
     neutralizeTraps();
     defeatAntiAdblock();
@@ -500,8 +637,8 @@
     highlightRealDownloadLinks();
     unlockHiddenButtons();
     scanDownloadableLinks();
-    autoStepClicker();
     sniffVideoStreams();
+    cloudLockerUnlocker();
   }
 
   // Run on start and ready
@@ -523,5 +660,5 @@
     subtree: true
   });
 
-  console.log('[DirectDrop v2.0] 🛡️ All Superpowers Active (Batch Grabber, Auto-Step, Video Sniffer, Traps)');
+  console.log('[DirectDrop Pro v3.0 OLED] ⚡ Pitch-Black God Mode Active (Quality Tabs, Motrix RPC, Subtitle Finder)');
 })();

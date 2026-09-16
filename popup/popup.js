@@ -1,14 +1,38 @@
-// DirectDrop v2.0 Popup Controller
+// DirectDrop Pro v3.0 Popup Controller
 document.addEventListener('DOMContentLoaded', () => {
+  // Navigation Tabs
+  const tabBtnShields = document.getElementById('tabBtnShields');
+  const tabBtnTools = document.getElementById('tabBtnTools');
+  const tabContentShields = document.getElementById('tabContentShields');
+  const tabContentTools = document.getElementById('tabContentTools');
+
+  tabBtnShields.addEventListener('click', () => {
+    tabBtnShields.classList.add('active');
+    tabBtnTools.classList.remove('active');
+    tabContentShields.style.display = 'block';
+    tabContentTools.style.display = 'none';
+  });
+
+  tabBtnTools.addEventListener('click', () => {
+    tabBtnTools.classList.add('active');
+    tabBtnShields.classList.remove('active');
+    tabContentTools.style.display = 'block';
+    tabContentShields.style.display = 'none';
+  });
+
   // Elements
   const masterToggle = document.getElementById('masterToggle');
   const toggleTraps = document.getElementById('toggleTraps');
   const toggleTimers = document.getElementById('toggleTimers');
   const toggleHighlight = document.getElementById('toggleHighlight');
-  const toggleUnwrap = document.getElementById('toggleUnwrap');
   const toggleTerminator = document.getElementById('toggleTerminator');
+  const toggleAntiAdblock = document.getElementById('toggleAntiAdblock');
+
+  const rpcUrlInput = document.getElementById('rpcUrlInput');
+  const toggleQualityFilter = document.getElementById('toggleQualityFilter');
+  const toggleSubtitle = document.getElementById('toggleSubtitle');
+  const toggleCloudUnlocker = document.getElementById('toggleCloudUnlocker');
   const toggleBatch = document.getElementById('toggleBatch');
-  const toggleStepClicker = document.getElementById('toggleStepClicker');
   const toggleSniffer = document.getElementById('toggleSniffer');
 
   const statTraps = document.getElementById('statTraps');
@@ -23,15 +47,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const settings = data.settings || {};
     const stats = data.stats || {};
 
-    // Apply settings
+    // Apply toggles
     masterToggle.checked = settings.enabled !== false;
     toggleTraps.checked = settings.killTraps !== false;
     toggleTimers.checked = settings.skipTimers !== false;
     toggleHighlight.checked = settings.highlightLinks !== false;
-    toggleUnwrap.checked = settings.unwrapRedirects !== false;
     toggleTerminator.checked = settings.tabTerminator !== false;
+    toggleAntiAdblock.checked = settings.antiAdblock !== false;
+
+    rpcUrlInput.value = settings.rpcUrl || 'http://localhost:6800/jsonrpc';
+    toggleQualityFilter.checked = settings.qualityFilter !== false;
+    toggleSubtitle.checked = settings.subtitleFinder !== false;
+    toggleCloudUnlocker.checked = settings.cloudUnlocker !== false;
     toggleBatch.checked = settings.batchGrabber !== false;
-    toggleStepClicker.checked = settings.autoStepClicker !== false;
     toggleSniffer.checked = settings.streamSniffer !== false;
 
     // Apply stats
@@ -47,20 +75,29 @@ document.addEventListener('DOMContentLoaded', () => {
       killTraps: toggleTraps.checked,
       skipTimers: toggleTimers.checked,
       highlightLinks: toggleHighlight.checked,
-      unwrapRedirects: toggleUnwrap.checked,
       tabTerminator: toggleTerminator.checked,
+      antiAdblock: toggleAntiAdblock.checked,
+      rpcUrl: rpcUrlInput.value.trim() || 'http://localhost:6800/jsonrpc',
+      qualityFilter: toggleQualityFilter.checked,
+      subtitleFinder: toggleSubtitle.checked,
+      cloudUnlocker: toggleCloudUnlocker.checked,
       batchGrabber: toggleBatch.checked,
-      autoStepClicker: toggleStepClicker.checked,
-      streamSniffer: toggleSniffer.checked
+      streamSniffer: toggleSniffer.checked,
+      unwrapRedirects: true
     };
     chrome.storage.local.set({ settings });
   }
 
-  // Toggle Event Listeners
-  [masterToggle, toggleTraps, toggleTimers, toggleHighlight, toggleUnwrap,
-   toggleTerminator, toggleBatch, toggleStepClicker, toggleSniffer].forEach(el => {
+  // Toggle & Input Event Listeners
+  [masterToggle, toggleTraps, toggleTimers, toggleHighlight, toggleTerminator,
+   toggleAntiAdblock, toggleQualityFilter, toggleSubtitle, toggleCloudUnlocker,
+   toggleBatch, toggleSniffer].forEach((el) => {
     if (el) el.addEventListener('change', saveSettings);
   });
+
+  if (rpcUrlInput) {
+    rpcUrlInput.addEventListener('input', saveSettings);
+  }
 
   // Open Test Playground
   btnTestPlayground.addEventListener('click', () => {

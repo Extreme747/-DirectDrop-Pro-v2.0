@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "DirectDrop - Popup & Download Bypasser",
-  "version": "2.0.0",
-  "description": "Bypasses download popups, click-traps, fake timers, grabs batch episode links, sniffs video streams, and auto-terminates ad tabs.",
+  "name": "DirectDrop Pro - Popup & Download Bypasser",
+  "version": "3.0.0",
+  "description": "Bypasses download traps, unlocks quality tabs, sends links to Motrix/Aria2, fetches subtitles, and auto-terminates ad tabs.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
