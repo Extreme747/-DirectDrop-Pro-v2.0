@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DirectDrop Pro v2.0 - Test Playground</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 40px 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 880px;
+      margin: 0 auto;
+    }
+
+    .header-box {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(59, 130, 246, 0.1));
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 24px;
+      border-radius: 16px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #10b981;
+      font-size: 26px;
+      margin-bottom: 8px;
+    }
+
+    p.subtitle {
+      color: #94a3b8;
+      font-size: 14px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 22px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+
+    .btn-fake-ad {
+      display: inline-block;
+      background: linear-gradient(180deg, #ef4444, #b91c1c);
+      color: white;
+      text-decoration: none;
+      font-weight: 900;
+      font-size: 16px;
+      padding: 14px 30px;
+      border-radius: 8px;
+      border: 2px solid #f87171;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    .btn-real-file {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: #047857;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      padding: 10px 20px;
+      border-radius: 8px;
+    }
+
+    .timer-box {
+      background: #0f172a;
+      border: 1px dashed #475569;
+      padding: 16px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .countdown-num {
+      font-size: 30px;
+      font-weight: 800;
+      color: #f59e0b;
+    }
+
+    .download-btn {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: all 0.2s;
+    }
+
+    .download-btn[disabled] {
+      background: #475569;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .status-pill {
+      display: inline-block;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-top: 8px;
+      background: #334155;
+      color: #94a3b8;
+    }
+
+    .status-success {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .episode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .episode-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      padding: 12px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Simulation of invisible overlay */
+    #fake-ad-overlay-trap {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      z-index: 10000;
+      cursor: default;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIMULATED INVISIBLE AD TRAP -->
+  <div id="fake-ad-overlay-trap" onclick="alert('❌ AD TRAP TRIGGERED!')"></div>
+
+  <div class="container">
+    <div class="header-box">
+      <h1>🛡️ DirectDrop Pro v2.0 - Test Playground</h1>
+      <p class="subtitle">Complete test suite for all protections, link grabbers, auto-step clickers, and stream sniffers.</p>
+    </div>
+
+    <!-- TEST 1: Batch Episode Links Grabber -->
+    <div class="card">
+      <div class="card-title">📦 1. Batch Episode Link Grabber (Look at bottom-left!)</div>
+      <div class="card-desc">
+        Notice the green floating <code>📦 Grab All Links (4)</code> button at the bottom-left corner of your screen. Click it to copy all episode links for IDM with 1 click!
+      </div>
+      <div class="episode-grid">
+        <div class="episode-card">
+          <span>Episode 01 [1080p]</span>
+          <a href="https://drive.google.com/file/d/ep01_1080p.mkv" class="btn-real-file" style="padding: 6px 12px; font-size: 12px;">📁 Ep 01</a>
+        </div>
+        <div class="episode-card">
+          <span>Episode 02 [1080p]</span>
+          <a href="https://mediafire.com/download/ep02_1080p.mkv" class="btn-real-file" style="padding: 6px 12px; font-size: 12px;">📁 Ep 02</a>
+        </div>
+        <div class="episode-card">
+          <span>Episode 03 [1080p]</span>
+          <a href="https://mega.nz/file/ep03_1080p.mkv" class="btn-real-file" style="padding: 6px 12px; font-size: 12px;">📁 Ep 03</a>
+        </div>
+        <div class="episode-card">
+          <span>Episode 04 [1080p]</span>
+          <a href="https://downloads.example.org/files/ep04_1080p.zip" class="btn-real-file" style="padding: 6px 12px; font-size: 12px;">📁 Ep 04</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEST 2: Auto Multi-Step Clicker -->
+    <div class="card">
+      <div class="card-title">🤖 2. Auto Multi-Step Clicker ("Continue / Get Link")</div>
+      <div class="card-desc">
+        Intermediate step buttons with labels like "Click here to continue" are automatically scrolled to and pressed!
+      </div>
+      <div id="stepContainer" style="text-align: center; padding: 14px; background: #0f172a; border-radius: 8px;">
+        <button id="stepBtn" class="download-btn" onclick="advanceStep()">
+          Click here to continue (Step 1/2)
+        </button>
+        <div id="stepResult" class="status-pill" style="display: block; margin-top: 10px;">Awaiting step action...</div>
+      </div>
+    </div>
+
+    <!-- TEST 3: Video Stream Sniffer -->
+    <div class="card">
+      <div class="card-title">🎬 3. Video Stream Sniffer (Look at top-right of player)</div>
+      <div class="card-desc">
+        DirectDrop detects HTML5 video streams and injects a direct <code>🎬 Download Video Stream</code> button.
+      </div>
+      <div style="position: relative; max-width: 540px; margin: 0 auto; border-radius: 10px; overflow: hidden; background: #000;">
+        <video controls style="width: 100%; display: block;" src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"></video>
+      </div>
+    </div>
+
+    <!-- TEST 4: Fake Ad vs Real Zip -->
+    <div class="card">
+      <div class="card-title">🎯 4. Real File Glow vs Fake Ad Dimmer</div>
+      <div class="card-desc">
+        Fake banner is dimmed with <code>⚠️ Ad</code> badge, while real file glows green with <code>⚡ Verified File</code>.
+      </div>
+      <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+        <a href="https://doubleclick-tracker.com/click" class="btn-fake-ad" target="_blank">
+          ▶ START DOWNLOAD NOW
+        </a>
+        <a href="https://downloads.example.org/files/Software_v2.4.zip" class="btn-real-file">
+          📁 Software_v2.4.zip (48.5 MB)
+        </a>
+      </div>
+    </div>
+
+    <!-- TEST 5: 15s Countdown Bypass -->
+    <div class="card">
+      <div class="card-title">⏩ 5. 15-Second Timer Bypass</div>
+      <div class="card-desc">
+        15s timer ticks down 20x faster and unlocks the button.
+      </div>
+      <div class="timer-box">
+        <div>Unlocking in:</div>
+        <div class="countdown-num" id="timerCount">15</div>
+        <button id="downloadTimerBtn" class="download-btn" disabled onclick="alert('🎉 File Downloaded!')">
+          ⏳ Please Wait...
+        </button>
+      </div>
+    </div>
+
+    <!-- TEST 6: Instant Tab Terminator -->
+    <div class="card">
+      <div class="card-title">🔫 6. Instant Tab Terminator (Spam Ad Killer)</div>
+      <div class="card-desc">
+        Try opening a betting / popunder ad link. DirectDrop's background worker detects the ad pattern and auto-kills the new tab immediately!
+      </div>
+      <button class="download-btn" style="background: #dc2626;" onclick="window.open('https://popads-1xbet-casino-bonus.com/free', '_blank')">
+        Test Trigger Betting/Ad Tab
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // 1. Step clicker simulation
+    let currentStep = 1;
+    function advanceStep() {
+      const btn = document.getElementById('stepBtn');
+      const res = document.getElementById('stepResult');
+      if (currentStep === 1) {
+        currentStep = 2;
+        btn.innerText = 'Get Link (Final Step)';
+        res.innerText = '✅ Step 1 passed! Next button ready for auto-click.';
+        res.className = 'status-pill status-success';
+      } else {
+        btn.style.display = 'none';
+        res.innerText = '🎉 All steps completed automatically!';
+        res.className = 'status-pill status-success';
+      }
+    }
+
+    // 2. Countdown logic
+    let secondsLeft = 15;
+    const countEl = document.getElementById('timerCount');
+    const timerBtn = document.getElementById('downloadTimerBtn');
+    const interval = setInterval(() => {
+      secondsLeft--;
+      if (countEl) countEl.innerText = secondsLeft;
+      if (secondsLeft <= 0) {
+        clearInterval(interval);
+        if (timerBtn) {
+          timerBtn.removeAttribute('disabled');
+          timerBtn.innerHTML = '⚡ Download Complete';
+          timerBtn.style.background = '#10b981';
+        }
+      }
+    }, 1000);
+  </script>
+</body>
+</html>

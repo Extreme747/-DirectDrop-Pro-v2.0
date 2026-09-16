@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DirectDrop v2.0</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-badge">⚡</div>
+        <div class="brand-text">
+          <h1>DirectDrop Pro</h1>
+          <span class="version">v2.0 • God Mode Active</span>
+        </div>
+      </div>
+      <label class="switch master-switch">
+        <input type="checkbox" id="masterToggle" checked>
+        <span class="slider round"></span>
+      </label>
+    </header>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-num" id="statTraps">0</span>
+        <span class="stat-label">Traps Removed</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="statPopups">0</span>
+        <span class="stat-label">Popups & Tabs Killed</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-num" id="statLinks">0</span>
+        <span class="stat-label">Links Bypassed</span>
+      </div>
+    </div>
+
+    <!-- Feature Toggles -->
+    <div class="section-title">CORE PROTECTION</div>
+    <div class="features-list">
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">Anti-Click Trap</span>
+          <span class="feature-desc">Remove invisible click-jack overlays</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleTraps" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">Timer Fast-Forward</span>
+          <span class="feature-desc">Skip 10-30s countdowns 20x faster</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleTimers" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">Real File Highlighter</span>
+          <span class="feature-desc">Glow real .zip/.exe files & dim ads</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleHighlight" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">URL Unshortener</span>
+          <span class="feature-desc">Unwrap redirects & base64 links</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleUnwrap" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Pro Features -->
+    <div class="section-title" style="margin-top: 12px;">AUTOMATION SUPERPOWERS</div>
+    <div class="features-list">
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">Instant Tab Terminator</span>
+          <span class="feature-desc">Auto-kill opened betting/ad tabs</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleTerminator" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">Batch Episode Grabber</span>
+          <span class="feature-desc">1-Click copy all series links for IDM</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleBatch" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">Auto Multi-Step Clicker</span>
+          <span class="feature-desc">Auto-click "Continue / Get Link"</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleStepClicker" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="feature-item">
+        <div class="feature-info">
+          <span class="feature-title">Video Stream Sniffer</span>
+          <span class="feature-desc">Direct MP4 / M3U8 stream download</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggleSniffer" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn btn-primary" id="btnTestPlayground">
+        🧪 Open Test Playground
+      </button>
+      <button class="btn btn-secondary" id="btnResetStats">
+        Reset Counters
+      </button>
+    </div>
+
+    <footer class="footer">
+      <span>Right click any link ➔ "DirectDrop: Copy Clean Link"</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

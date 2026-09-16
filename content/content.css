@@ -1,0 +1,291 @@
+/* DirectDrop v2.0 Content Styles */
+
+/* 1. Highlight Genuine Download Links */
+.directdrop-real-download-target {
+  outline: 2.5px solid #10b981 !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.45) !important;
+  position: relative !important;
+  transition: all 0.25s ease-in-out !important;
+}
+
+.directdrop-real-download-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  padding: 3px 8px !important;
+  border-radius: 9999px !important;
+  margin-left: 8px !important;
+  vertical-align: middle !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4) !important;
+  pointer-events: none !important;
+  z-index: 1000 !important;
+  animation: directdrop-pulse 2s infinite ease-in-out !important;
+}
+
+@keyframes directdrop-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.9; }
+}
+
+/* 2. Dim Deceptive / Fake Ad Download Buttons */
+.directdrop-fake-ad-dimmed {
+  opacity: 0.35 !important;
+  filter: grayscale(80%) !important;
+  position: relative !important;
+  transition: opacity 0.2s !important;
+}
+
+.directdrop-fake-ad-dimmed:hover {
+  opacity: 0.7 !important;
+}
+
+.directdrop-fake-ad-badge {
+  display: inline-block !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  font-family: sans-serif !important;
+  font-size: 10px !important;
+  font-weight: bold !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  margin-left: 6px !important;
+  pointer-events: none !important;
+}
+
+/* 3. Floating Action Notification Toast */
+#directdrop-toast-container {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  pointer-events: none !important;
+}
+
+.directdrop-toast {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  background: rgba(15, 23, 42, 0.95) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  padding: 10px 16px !important;
+  border-radius: 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 10px rgba(16, 185, 129, 0.2) !important;
+  backdrop-filter: blur(8px) !important;
+  animation: directdrop-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  transition: opacity 0.3s, transform 0.3s !important;
+}
+
+.directdrop-toast-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  background: rgba(16, 185, 129, 0.2) !important;
+  border-radius: 50% !important;
+  color: #10b981 !important;
+  font-size: 14px !important;
+}
+
+@keyframes directdrop-slide-in {
+  from { transform: translateY(20px) scale(0.95); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* 4. Floating Batch Link Grabber Button */
+#directdrop-floating-grabber-btn {
+  position: fixed !important;
+  bottom: 24px !important;
+  left: 24px !important;
+  z-index: 2147483646 !important;
+  background: linear-gradient(135deg, #10b981, #047857) !important;
+  color: #ffffff !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  padding: 10px 18px !important;
+  border-radius: 50px !important;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4) !important;
+  cursor: pointer !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  transition: all 0.25s ease !important;
+}
+
+#directdrop-floating-grabber-btn:hover {
+  transform: translateY(-2px) scale(1.04) !important;
+  box-shadow: 0 12px 28px rgba(16, 185, 129, 0.55) !important;
+}
+
+/* 5. Batch Links Modal Drawer */
+#directdrop-grabber-modal {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 2147483647 !important;
+  width: 90% !important;
+  max-width: 650px !important;
+  max-height: 80vh !important;
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 20px rgba(16, 185, 129, 0.2) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.directdrop-modal-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 16px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 1px solid #1e293b !important;
+}
+
+.directdrop-modal-title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #10b981 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.directdrop-modal-close {
+  background: #1e293b !important;
+  border: none !important;
+  color: #94a3b8 !important;
+  font-size: 18px !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  cursor: pointer !important;
+}
+
+.directdrop-modal-close:hover {
+  background: #334155 !important;
+  color: #ffffff !important;
+}
+
+.directdrop-links-list {
+  overflow-y: auto !important;
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  margin-bottom: 16px !important;
+  padding-right: 4px !important;
+}
+
+.directdrop-link-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 14px !important;
+  background: #1e293b !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.directdrop-link-name {
+  color: #e2e8f0 !important;
+  font-weight: 500 !important;
+  word-break: break-all !important;
+  margin-right: 12px !important;
+}
+
+.directdrop-modal-actions {
+  display: flex !important;
+  gap: 12px !important;
+  justify-content: flex-end !important;
+  padding-top: 12px !important;
+  border-top: 1px solid #1e293b !important;
+}
+
+.directdrop-btn {
+  background: #10b981 !important;
+  color: white !important;
+  border: none !important;
+  padding: 9px 18px !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: 0.2s !important;
+}
+
+.directdrop-btn:hover {
+  background: #059669 !important;
+}
+
+.directdrop-btn-secondary {
+  background: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.directdrop-btn-secondary:hover {
+  background: #475569 !important;
+}
+
+/* 6. Video Stream Sniffer Overlay */
+.directdrop-video-sniff-btn {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  z-index: 2147483640 !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  color: #38bdf8 !important;
+  border: 1px solid rgba(56, 189, 248, 0.5) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  padding: 6px 14px !important;
+  border-radius: 30px !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: all 0.2s !important;
+}
+
+.directdrop-video-sniff-btn:hover {
+  background: #38bdf8 !important;
+  color: #0f172a !important;
+  transform: scale(1.05) !important;
+}
+
+/* 7. Auto-Step Click Pulse */
+.directdrop-auto-click-target {
+  outline: 3px dashed #38bdf8 !important;
+  animation: directdrop-step-glow 1s infinite alternate !important;
+}
+
+@keyframes directdrop-step-glow {
+  from { outline-color: #38bdf8; box-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
+  to { outline-color: #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.8); }
+}
