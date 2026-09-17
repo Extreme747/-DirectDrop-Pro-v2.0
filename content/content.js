@@ -152,24 +152,21 @@
       const isFixedOrAbsolute = style.position === 'fixed' || style.position === 'absolute';
       const zIndex = parseInt(style.zIndex, 10) || 0;
 
-      if (isFixedOrAbsolute && zIndex >= 90) {
+      if (isFixedOrAbsolute && zIndex >= 20) {
         const rect = el.getBoundingClientRect();
-        const coversScreen = rect.width >= viewWidth * 0.75 && rect.height >= viewHeight * 0.75;
+        const coversScreen = (rect.width >= viewWidth * 0.5 && rect.height >= viewHeight * 0.5);
         const isTransparent = style.opacity === '0' || style.backgroundColor === 'transparent' || style.backgroundColor === 'rgba(0, 0, 0, 0)';
 
-        if (coversScreen && isTransparent) {
-          const hasLittleText = (el.innerText || '').trim().length < 25;
-          if (hasLittleText) {
-            el.remove();
-            stats.trapsNeutralized++;
-            updateStats('trapsNeutralized');
-          }
+        if (coversScreen && isTransparent && (el.innerText || '').trim().length < 20) {
+          el.remove();
+          stats.trapsNeutralized++;
+          updateStats('trapsNeutralized');
         }
       }
 
       if (el.tagName === 'A' && el.getAttribute('target') === '_blank') {
         const rect = el.getBoundingClientRect();
-        if (rect.width >= viewWidth * 0.8 && rect.height >= viewHeight * 0.8) {
+        if (rect.width >= viewWidth * 0.6 && rect.height >= viewHeight * 0.4 && (el.innerText || '').trim().length < 15) {
           el.remove();
           stats.trapsNeutralized++;
           updateStats('trapsNeutralized');
@@ -1186,6 +1183,83 @@ echo "[+] All downloads finished!"
     });
   }
 
+  // 11. Core Auto-Step Clicker (Fast-forwards multi-step shorteners)
+  let lastAutoClickedEl = null;
+
+  function autoStepClicker() {
+    const stepPatterns = [
+      /click here to continue/i,
+      /proceed to download/i,
+      /get link/i,
+      /generate link/i,
+      /verify to continue/i,
+      /continue to download/i,
+      /create download link/i,
+      /step \d\/\d/i,
+      /slow download/i
+    ];
+
+    const candidates = document.querySelectorAll(
+      'button, a, input[type="submit"], input[type="button"], .btn, .btn-primary, .get-link, #btn-main'
+    );
+
+    for (const el of candidates) {
+      if (el === lastAutoClickedEl || el.closest('#directdrop-grabber-modal') || el.closest('#directdrop-swiss-modal') || el.id?.startsWith('directdrop')) continue;
+
+      const text = (el.innerText || el.value || '').trim();
+      const idClass = (el.id + ' ' + el.className).toLowerCase();
+
+      const matches = stepPatterns.some(p => p.test(text)) || idClass.includes('getlink') || idClass.includes('btn-step') || idClass.includes('downloadlink');
+
+      if (matches && el.offsetParent !== null) {
+        if (el.hasAttribute('disabled')) el.removeAttribute('disabled');
+        if (el.style.display === 'none') el.style.display = 'inline-block';
+        el.style.pointerEvents = 'auto';
+        el.style.opacity = '1';
+
+        lastAutoClickedEl = el;
+        console.log('[DirectDrop] 🤖 Auto-advancing step:', text, el);
+
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(() => {
+            el.click();
+          }, 250);
+        }, 350);
+
+        break;
+      }
+    }
+  }
+
+  // 12. Fast-Forward DOM Countdown Timers
+  function fastForwardDomTimers() {
+    const timerEls = document.querySelectorAll(
+      '[id*="timer"], [class*="timer"], [id*="count"], [class*="count"], [id*="wait"], [class*="wait"], [id*="sec"], [class*="sec"]'
+    );
+    timerEls.forEach((el) => {
+      const txt = (el.innerText || '').trim();
+      if (/^\d{1,2}$/.test(txt)) {
+        const num = parseInt(txt, 10);
+        if (num > 0) {
+          el.innerText = '0';
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+  }
+
+  // 13. Auto-Focus Main Download Button
+  function autoFocusMainDownload() {
+    if (window.__directdrop_scrolled_to_download) return;
+    const realTarget = document.querySelector('.directdrop-real-download-target, .directdrop-server-badge');
+    if (realTarget) {
+      window.__directdrop_scrolled_to_download = true;
+      console.log('[DirectDrop] 🎯 Auto-focused main download link:', realTarget);
+      realTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
   function cloudLockerUnlocker() {
     if (!config.enabled || !config.cloudUnlocker) return;
 
@@ -1241,16 +1315,19 @@ echo "[+] All downloads finished!"
     });
   }
 
-  // 18. Master Runner Cycle
+  // 14. Master Runner Cycle (Core Priority First)
   function runProtectionCycle() {
     neutralizeTraps();
     defeatAntiAdblock();
-    handleYouTube();
-    handleGitHub();
+    fastForwardDomTimers();
+    autoStepClicker();
     processRedirectLinks();
     highlightRealDownloadLinks();
     unlockHiddenButtons();
+    autoFocusMainDownload();
     scanDownloadableLinks();
+    handleYouTube();
+    handleGitHub();
     sniffVideoStreams();
     cloudLockerUnlocker();
   }

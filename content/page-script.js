@@ -1,8 +1,7 @@
-// DirectDrop Page Context Script (runs in MAIN world)
+// DirectDrop Pro - Core Fast-Forward & Anti-Popup Engine (MAIN world)
 (function () {
   'use strict';
 
-  // State to track user interaction
   let lastUserClickTime = 0;
   let lastClickedElement = null;
 
@@ -11,42 +10,38 @@
     lastClickedElement = e.target;
   }, true);
 
-  // Legitimate download & cloud host whitelist (NEVER BLOCK THESE)
+  // Whitelisted genuine download & file hosting servers
   const DOWNLOAD_WHITELIST_REGEX = /(hubcloud|gamerxyt|drive\.google|mediafire|mega\.nz|pixeldrain|gofile|1fichier|dropbox|fsl|pixel|buzz|telegram|fastdl|racaty|streamwish|filepress|\.mkv|\.mp4|\.zip|\.rar|\.7z|\.exe|\.apk|\.iso|\/download|\/drive\/|\/file\/)/i;
 
-  // Strict ad networks and malware/betting domains only (never use short substrings like 'ad' or 'click')
-  const STRICT_AD_PATTERNS = /(adsterra|propellerads|clickadu|popads|popcash|exoclick|trafficjunky|ad-maven|hilltopads|richpush|juicyads|monetag|1xbet|bet365|parimatch|melbet|mostbet|stake\.com|casino|lucky-wheel|cleaner-update|system-infected)/i;
+  // Known ad/spam networks
+  const AD_NETWORK_REGEX = /(adsterra|propellerads|clickadu|popads|popcash|exoclick|trafficjunky|ad-maven|hilltopads|richpush|juicyads|monetag|1xbet|bet365|parimatch|melbet|mostbet|stake\.com|casino|lucky-wheel|cleaner-update|system-infected|onclick|track|syndication)/i;
 
-  // 1. Hook window.open with smart intent detection
+  // 1. AGGRESSIVE POPUP KILLER
   const originalWindowOpen = window.open;
   window.open = function (url, target, features) {
     const urlStr = String(url || '').toLowerCase();
     const timeSinceClick = Date.now() - lastUserClickTime;
 
-    // Check if clicked element was a download or server button
+    // Check if clicked element was a genuine download button
     const clickedText = (lastClickedElement?.innerText || lastClickedElement?.value || '').toLowerCase();
     const clickedClass = (lastClickedElement?.className || '').toString().toLowerCase();
-    const isDownloadButtonClick = /download|server|fsl|pixel|buzz|cloud|stream|episode|get link/i.test(clickedText + ' ' + clickedClass);
+    const isDownloadButtonClick = /download|server|fsl|pixel|buzz|cloud|stream|episode|get link|continue/i.test(clickedText + ' ' + clickedClass);
 
-    // 1. If it's a known download host or file, ALWAYS ALLOW
+    // 1. If it's a verified download host or media file -> ALWAYS ALLOW
     if (DOWNLOAD_WHITELIST_REGEX.test(urlStr)) {
-      console.log('[DirectDrop] ✅ Allowed verified download URL:', url);
+      console.log('[DirectDrop] ✅ Allowed genuine download popup:', url);
       return originalWindowOpen.apply(this, arguments);
     }
 
-    // 2. If user clicked within the last 6 seconds (generous for async AJAX token generation)
-    const isUserTriggered = timeSinceClick < 6000 || isDownloadButtonClick;
+    // 2. If it's an explicit ad network or opened without clicking a download button -> BLOCK
+    const isExplicitAd = AD_NETWORK_REGEX.test(urlStr);
+    const isDirectUserIntent = timeSinceClick < 1500 && isDownloadButtonClick;
 
-    // 3. Only block if it is explicitly an ad domain OR opened completely unprompted with suspicious URL
-    const isExplicitAd = STRICT_AD_PATTERNS.test(urlStr);
-    const isBlankOrFake = (!urlStr || urlStr === 'about:blank') && !isUserTriggered;
-
-    if (isExplicitAd || isBlankOrFake || (!isUserTriggered && urlStr.includes('pop'))) {
-      console.warn('[DirectDrop] 🛡️ Blocked deceptive popup:', url);
+    if (isExplicitAd || !isDirectUserIntent || !urlStr || urlStr === 'about:blank') {
+      console.warn('[DirectDrop] 🛡️ Neutralized useless popup ad:', url);
       window.dispatchEvent(new CustomEvent('__directdrop_msg__', {
         detail: { action: 'popup_blocked', url: url || 'about:blank' }
       }));
-      // Return a dummy window proxy
       return {
         closed: false,
         close: function () {},
@@ -56,29 +51,23 @@
       };
     }
 
-    // Otherwise, allow the user's tab/window to open safely
     return originalWindowOpen.apply(this, arguments);
   };
 
-  // 2. Prevent beforeunload traps ("Are you sure you want to leave?")
+  // 2. Prevent beforeunload traps
   window.addEventListener('beforeunload', (e) => {
     delete e.returnValue;
   }, true);
 
-  // 3. Smart Countdown Fast-Forwarder (Only accelerates VISUAL timers, not backend auth tokens)
+  // 3. FAST-FORWARD WAIT TIMERS (20x Acceleration & 40ms interval ticks)
   const originalSetTimeout = window.setTimeout;
   const originalSetInterval = window.setInterval;
 
-  function hasVisualCountdown() {
-    return !!document.querySelector('[id*="timer"], [class*="timer"], [id*="countdown"], [class*="countdown"], [id*="count"], .btn-step');
-  }
-
   window.setTimeout = function (callback, delay, ...args) {
     let speedDelay = delay;
-    // Only speed up if there is an active visual countdown element and delay is >= 1000ms
-    if (typeof delay === 'number' && delay >= 1000 && delay <= 60000 && hasVisualCountdown()) {
-      // Safe acceleration (5x faster) so server session/anti-bot checks don't fail
-      speedDelay = Math.max(150, Math.floor(delay / 5));
+    // Accelerate any 1s - 60s countdown timer by 20x
+    if (typeof delay === 'number' && delay >= 800 && delay <= 60000) {
+      speedDelay = Math.max(30, Math.floor(delay / 20));
       window.dispatchEvent(new CustomEvent('__directdrop_msg__', {
         detail: { action: 'timer_accelerated', originalDelay: delay, newDelay: speedDelay }
       }));
@@ -88,10 +77,9 @@
 
   window.setInterval = function (callback, delay, ...args) {
     let speedDelay = delay;
-    // Typical 1-second visual countdown tick
-    if (typeof delay === 'number' && delay >= 800 && delay <= 2000 && hasVisualCountdown()) {
-      // 200ms tick instead of 1000ms (5x fast forward without choking browser)
-      speedDelay = 200;
+    // Shrink standard 1-second countdown intervals down to 40ms!
+    if (typeof delay === 'number' && delay >= 700 && delay <= 2000) {
+      speedDelay = 40;
       window.dispatchEvent(new CustomEvent('__directdrop_msg__', {
         detail: { action: 'timer_accelerated', originalDelay: delay, newDelay: speedDelay }
       }));
@@ -99,5 +87,5 @@
     return originalSetInterval(callback, speedDelay, ...args);
   };
 
-  console.log('[DirectDrop] 🚀 Precision Page Protections Active (Whitelists & Smart Popup Filter Ready)');
+  console.log('[DirectDrop] ⚡ Core bypass active (Fast-forward timers & popup blocker restored)');
 })();
