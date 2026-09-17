@@ -1,4 +1,4 @@
-// DirectDrop Pro v3.5 Dev & Founder Edition - Popup Controller
+// DirectDrop Pro v4.0 Productivity & Dev Suite - Popup Controller
 document.addEventListener('DOMContentLoaded', () => {
   // Navigation Tabs
   const tabBtnShields = document.getElementById('tabBtnShields');
@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Elements
   const masterToggle = document.getElementById('masterToggle');
   const toggleSilentMode = document.getElementById('toggleSilentMode');
+  const toggleYtAdblock = document.getElementById('toggleYtAdblock');
+  const toggleYtHideShorts = document.getElementById('toggleYtHideShorts');
   const toggleTraps = document.getElementById('toggleTraps');
   const toggleTimers = document.getElementById('toggleTimers');
   const toggleHighlight = document.getElementById('toggleHighlight');
@@ -36,13 +38,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleBatch = document.getElementById('toggleBatch');
 
   const webhookUrlInput = document.getElementById('webhookUrlInput');
+  const btnOpenSwissKnife = document.getElementById('btnOpenSwissKnife');
+  const btnQuickMockFill = document.getElementById('btnQuickMockFill');
+  const btnQuickSummarize = document.getElementById('btnQuickSummarize');
   const btnSniffAssets = document.getElementById('btnSniffAssets');
+  const toggleGithubActions = document.getElementById('toggleGithubActions');
   const toggleHeadlessExport = document.getElementById('toggleHeadlessExport');
-  const toggleSniffer = document.getElementById('toggleSniffer');
 
   const statTraps = document.getElementById('statTraps');
   const statPopups = document.getElementById('statPopups');
-  const statLinks = document.getElementById('statLinks');
+  const statYtAds = document.getElementById('statYtAds');
 
   const btnTestPlayground = document.getElementById('btnTestPlayground');
   const btnResetStats = document.getElementById('btnResetStats');
@@ -52,9 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const settings = data.settings || {};
     const stats = data.stats || {};
 
-    // Defaults: Silent Mode is ON by default!
     masterToggle.checked = settings.enabled !== false;
     toggleSilentMode.checked = settings.silentMode !== false;
+    toggleYtAdblock.checked = settings.youtubeAdblock !== false;
+    toggleYtHideShorts.checked = settings.youtubeHideShorts === true;
     toggleTraps.checked = settings.killTraps !== false;
     toggleTimers.checked = settings.skipTimers !== false;
     toggleHighlight.checked = settings.highlightLinks !== false;
@@ -68,13 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBatch.checked = settings.batchGrabber !== false;
 
     webhookUrlInput.value = settings.webhookUrl || '';
+    toggleGithubActions.checked = settings.githubActions !== false;
     toggleHeadlessExport.checked = settings.headlessExport !== false;
-    toggleSniffer.checked = settings.streamSniffer !== false;
 
     // Apply stats
     statTraps.innerText = stats.trapsNeutralized || 0;
     statPopups.innerText = (stats.popupsBlocked || 0) + (stats.tabsTerminated || 0);
-    statLinks.innerText = stats.linksBypassed || 0;
+    statYtAds.innerText = stats.youtubeAdsSkipped || 0;
   });
 
   // Save Settings Helper
@@ -82,6 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const settings = {
       enabled: masterToggle.checked,
       silentMode: toggleSilentMode.checked,
+      youtubeAdblock: toggleYtAdblock.checked,
+      youtubeHideShorts: toggleYtHideShorts.checked,
       killTraps: toggleTraps.checked,
       skipTimers: toggleTimers.checked,
       highlightLinks: toggleHighlight.checked,
@@ -93,33 +101,50 @@ document.addEventListener('DOMContentLoaded', () => {
       cloudUnlocker: toggleCloudUnlocker.checked,
       batchGrabber: toggleBatch.checked,
       webhookUrl: webhookUrlInput.value.trim(),
+      githubActions: toggleGithubActions.checked,
       headlessExport: toggleHeadlessExport.checked,
-      streamSniffer: toggleSniffer.checked,
+      streamSniffer: true,
       unwrapRedirects: true
     };
     chrome.storage.local.set({ settings });
   }
 
-  // Event Listeners
-  [masterToggle, toggleSilentMode, toggleTraps, toggleTimers, toggleHighlight,
-   toggleTerminator, toggleAntiAdblock, toggleQualityFilter, toggleSubtitle,
-   toggleCloudUnlocker, toggleBatch, toggleHeadlessExport, toggleSniffer].forEach((el) => {
+  // Event Listeners for toggles
+  [masterToggle, toggleSilentMode, toggleYtAdblock, toggleYtHideShorts,
+   toggleTraps, toggleTimers, toggleHighlight, toggleTerminator, toggleAntiAdblock,
+   toggleQualityFilter, toggleSubtitle, toggleCloudUnlocker, toggleBatch,
+   toggleGithubActions, toggleHeadlessExport].forEach((el) => {
     if (el) el.addEventListener('change', saveSettings);
   });
 
   if (rpcUrlInput) rpcUrlInput.addEventListener('input', saveSettings);
   if (webhookUrlInput) webhookUrlInput.addEventListener('input', saveSettings);
 
-  // Sniff Assets & APIs
-  if (btnSniffAssets) {
-    btnSniffAssets.addEventListener('click', () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]?.id) {
-          chrome.tabs.sendMessage(tabs[0].id, { action: 'trigger_asset_sniffer' }).catch(() => {});
-          window.close(); // close popup to focus on page inspector
-        }
-      });
+  // Send message to active tab helper
+  function sendToActiveTab(action) {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.id) {
+        chrome.tabs.sendMessage(tabs[0].id, { action }).catch(() => {});
+        window.close();
+      }
     });
+  }
+
+  // Dev Quick Actions
+  if (btnOpenSwissKnife) {
+    btnOpenSwissKnife.addEventListener('click', () => sendToActiveTab('trigger_swiss_knife'));
+  }
+
+  if (btnQuickMockFill) {
+    btnQuickMockFill.addEventListener('click', () => sendToActiveTab('trigger_mock_fill'));
+  }
+
+  if (btnQuickSummarize) {
+    btnQuickSummarize.addEventListener('click', () => sendToActiveTab('trigger_summarizer'));
+  }
+
+  if (btnSniffAssets) {
+    btnSniffAssets.addEventListener('click', () => sendToActiveTab('trigger_asset_sniffer'));
   }
 
   // Open Test Playground
@@ -134,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (response && response.stats) {
         statTraps.innerText = '0';
         statPopups.innerText = '0';
-        statLinks.innerText = '0';
+        statYtAds.innerText = '0';
       }
     });
   });

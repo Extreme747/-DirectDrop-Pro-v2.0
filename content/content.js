@@ -1,11 +1,11 @@
-// DirectDrop Pro v3.5 Dev & Founder Edition - Content Script
+// DirectDrop Pro v4.0 OLED Edition - Productivity, Dev Tools & YouTube AdBlock
 (function () {
   'use strict';
 
   // Config & State
   let config = {
     enabled: true,
-    silentMode: true, // Default to SILENT (no annoying floating toasts)
+    silentMode: true, // Default to SILENT (zero annoying toasts)
     killTraps: true,
     skipTimers: true,
     highlightLinks: true,
@@ -18,22 +18,30 @@
     cloudUnlocker: true,
     streamSniffer: true,
     headlessExport: true,
+    youtubeAdblock: true,
+    youtubeHideShorts: false,
+    devSwissKnife: true,
+    mockFormFiller: true,
+    githubActions: true,
     rpcUrl: 'http://localhost:6800/jsonrpc',
-    webhookUrl: ''
+    webhookUrl: '',
+    scratchpadNotes: ''
   };
 
   let stats = {
     trapsNeutralized: 0,
     popupsBlocked: 0,
     linksBypassed: 0,
-    tabsTerminated: 0
+    tabsTerminated: 0,
+    youtubeAdsSkipped: 0
   };
 
-  // 1. Load settings & stats from storage
+  // 1. Load settings from storage
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(['settings', 'stats'], (res) => {
       if (res.settings) config = { ...config, ...res.settings };
       if (res.stats) stats = { ...stats, ...res.stats };
+      applyPageSpecificSettings();
     });
   }
 
@@ -45,7 +53,7 @@
     (document.head || document.documentElement).appendChild(s);
   } catch (err) {}
 
-  // 3. Listen for events from MAIN world page-script (SILENT - NO ANNOYING TOASTS)
+  // 3. Listen for events from MAIN world page-script (SILENT)
   window.addEventListener('__directdrop_msg__', (e) => {
     if (!config.enabled) return;
     const detail = e.detail || {};
@@ -53,11 +61,9 @@
     if (detail.action === 'popup_blocked') {
       stats.popupsBlocked++;
       updateStats('popupsBlocked');
-      // Quiet background increment, no toast spam
     } else if (detail.action === 'timer_accelerated') {
       stats.linksBypassed++;
       updateStats('linksBypassed');
-      // Quiet background fast-forward, no toast spam
     }
   });
 
@@ -70,6 +76,12 @@
       openBatchGrabberModal();
     } else if (request.action === 'trigger_asset_sniffer') {
       sniffAndShowPageAssets();
+    } else if (request.action === 'trigger_swiss_knife') {
+      openDevSwissKnifeModal();
+    } else if (request.action === 'trigger_mock_fill') {
+      fillMockFormData();
+    } else if (request.action === 'trigger_summarizer') {
+      openDevSwissKnifeModal('summarizer');
     }
   });
 
@@ -92,12 +104,11 @@
     }
   }
 
-  // 5. Toast Notifications (Muted when silentMode is enabled, unless explicitly forced)
+  // 5. Toast Notifications (Muted when silentMode is enabled)
   let toastContainer = null;
   let lastToastTime = 0;
 
   function showToast(message, type = 'check', force = false) {
-    // If silentMode is on and not explicitly forced by a user click, DO NOT SHOW
     if (config.silentMode && !force) return;
 
     const now = Date.now();
@@ -167,7 +178,7 @@
     });
   }
 
-  // 7. Anti-Anti-AdBlocker (Unlocks pages)
+  // 7. Anti-Anti-AdBlocker (Generic)
   function defeatAntiAdblock() {
     if (!config.enabled || !config.antiAdblock) return;
 
@@ -185,55 +196,361 @@
     }
   }
 
-  // 8. Redirect Unwrapper
-  const REDIRECT_PARAMS = [
-    'url', 'dest', 'target', 'link', 'to', 'u', 'redirect', 'redirect_url', 
-    'destination', 'dl', 'download_url', 'out', 'r'
-  ];
+  // 8. 🔴 YouTube Ad Blocker, Fast-Forward & Anti-Detection Engine
+  function handleYouTube() {
+    if (!config.enabled || !config.youtubeAdblock || !window.location.hostname.includes('youtube.com')) return;
 
-  function unwrapUrl(href) {
-    try {
-      const urlObj = new URL(href, window.location.href);
-      for (const param of REDIRECT_PARAMS) {
-        const val = urlObj.searchParams.get(param);
-        if (!val) continue;
+    // A. Auto-dismiss "Ad blockers violate YouTube's Terms of Service" modal
+    const dialog = document.querySelector('ytd-enforcement-message-view-model, tp-yt-paper-dialog[role="dialog"]');
+    if (dialog && (dialog.innerText.includes('Ad blocker') || dialog.innerText.includes('adblock'))) {
+      console.log('[DirectDrop] 🛡️ Dismissed YouTube Anti-Adblock modal');
+      dialog.remove();
+      document.querySelectorAll('tp-yt-iron-overlay-backdrop').forEach(b => b.remove());
+      const video = document.querySelector('video');
+      if (video && video.paused) video.play();
+    }
 
-        if (val.startsWith('http://') || val.startsWith('https://')) {
-          return decodeURIComponent(val);
-        }
+    // B. Fast-forward & skip video ads instantly
+    const moviePlayer = document.getElementById('movie_player') || document.querySelector('.html5-video-player');
+    const isAdPlaying = moviePlayer?.classList.contains('ad-showing') || moviePlayer?.classList.contains('ad-interrupting');
 
-        if (val.length > 15 && /^[A-Za-z0-9+/=]+$/.test(val)) {
-          try {
-            const decoded = atob(val);
-            if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
-              return decoded;
-            }
-          } catch (e) {}
-        }
+    if (isAdPlaying) {
+      // 1. Click skip button if available
+      const skipBtn = document.querySelector(
+        '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .ytp-ad-overlay-close-button'
+      );
+      if (skipBtn) {
+        skipBtn.click();
+        stats.youtubeAdsSkipped = (stats.youtubeAdsSkipped || 0) + 1;
+        updateStats('youtubeAdsSkipped');
       }
-    } catch (e) {}
-    return null;
+
+      // 2. Fast forward video stream to the end and mute
+      const video = document.querySelector('video');
+      if (video && isFinite(video.duration) && video.duration > 0) {
+        video.muted = true;
+        video.playbackRate = 16.0;
+        video.currentTime = video.duration - 0.05;
+      }
+    }
+
+    // C. Remove promo banners and static ads
+    document.querySelectorAll('.ytd-banner-promo-renderer, ytd-ad-slot-renderer, #masthead-ad').forEach(el => el.remove());
   }
 
-  function processRedirectLinks() {
-    if (!config.enabled || !config.unwrapRedirects) return;
-
-    const links = document.querySelectorAll('a[href]:not([data-directdrop-checked])');
-    links.forEach((a) => {
-      a.setAttribute('data-directdrop-checked', 'true');
-      const href = a.getAttribute('href');
-      if (!href || href.startsWith('javascript:') || href.startsWith('#')) return;
-
-      const unwrapped = unwrapUrl(href);
-      if (unwrapped) {
-        a.href = unwrapped;
-        stats.linksBypassed++;
-        updateStats('linksBypassed');
+  function applyPageSpecificSettings() {
+    if (window.location.hostname.includes('youtube.com')) {
+      if (config.youtubeHideShorts) {
+        document.body.classList.add('directdrop-hide-shorts');
+      } else {
+        document.body.classList.remove('directdrop-hide-shorts');
       }
+    }
+  }
+
+  // 9. 🐙 GitHub Power Actions
+  function handleGitHub() {
+    if (!config.enabled || !config.githubActions || !window.location.hostname.includes('github.com')) return;
+
+    const repoHeader = document.querySelector('#repository-container-header, .pagehead-actions, .repohead-details-container');
+    if (repoHeader && !document.getElementById('directdrop-github-actions')) {
+      const wrapper = document.createElement('span');
+      wrapper.id = 'directdrop-github-actions';
+
+      const devBtn = document.createElement('button');
+      devBtn.className = 'directdrop-github-btn';
+      devBtn.innerHTML = '💻 github.dev';
+      devBtn.title = 'Open repository in Web VS Code';
+      devBtn.onclick = () => {
+        const url = window.location.href.replace('github.com', 'github.dev');
+        window.open(url, '_blank');
+      };
+
+      const cloneBtn = document.createElement('button');
+      cloneBtn.className = 'directdrop-github-btn';
+      cloneBtn.innerHTML = '📋 Clone';
+      cloneBtn.title = 'Copy git clone command';
+      cloneBtn.onclick = () => {
+        const parts = window.location.pathname.split('/').filter(Boolean);
+        if (parts.length >= 2) {
+          const cloneCmd = `git clone https://github.com/${parts[0]}/${parts[1]}.git`;
+          copyToClipboard(cloneCmd);
+          showToast(`📋 Copied: "${cloneCmd}"`, 'bolt', true);
+        }
+      };
+
+      wrapper.appendChild(devBtn);
+      wrapper.appendChild(cloneBtn);
+      repoHeader.appendChild(wrapper);
+    }
+  }
+
+  // 10. 🧪 1-Click Developer Mock Form Filler
+  function fillMockFormData() {
+    const inputs = document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"]), textarea, select');
+    if (!inputs.length) {
+      showToast('⚠️ No form inputs detected on this page.', 'shield', true);
+      return;
+    }
+
+    const randomNum = Math.floor(100 + Math.random() * 900);
+    const mockData = {
+      name: `Alex Mercer ${randomNum}`,
+      firstName: 'Alex',
+      lastName: 'Mercer',
+      email: `test.founder${randomNum}@startup.dev`,
+      phone: `+1 555-019-${randomNum}`,
+      password: `TestDev@${randomNum}!Secure`,
+      company: `Apex Dynamics Labs`,
+      address: '742 Evergreen Terrace',
+      city: 'San Francisco',
+      zip: '94107',
+      state: 'CA',
+      country: 'United States',
+      text: `Automated test input generated for dev testing. Build number ${Date.now()}.`
+    };
+
+    let filledCount = 0;
+
+    inputs.forEach((input) => {
+      const name = (input.name + ' ' + input.id + ' ' + input.placeholder + ' ' + input.className).toLowerCase();
+      const type = (input.type || '').toLowerCase();
+
+      let val = '';
+      if (type === 'email' || name.includes('email')) val = mockData.email;
+      else if (type === 'password' || name.includes('password') || name.includes('pwd')) val = mockData.password;
+      else if (type === 'tel' || name.includes('phone') || name.includes('mobile')) val = mockData.phone;
+      else if (name.includes('first')) val = mockData.firstName;
+      else if (name.includes('last')) val = mockData.lastName;
+      else if (name.includes('name') || name.includes('user')) val = mockData.name;
+      else if (name.includes('company') || name.includes('org')) val = mockData.company;
+      else if (name.includes('address') || name.includes('street')) val = mockData.address;
+      else if (name.includes('city')) val = mockData.city;
+      else if (name.includes('zip') || name.includes('postal')) val = mockData.zip;
+      else if (input.tagName === 'TEXTAREA' || name.includes('message') || name.includes('desc')) val = mockData.text;
+      else if (type === 'checkbox' || type === 'radio') {
+        input.checked = true;
+        filledCount++;
+      } else if (input.tagName === 'SELECT' && input.options.length > 1) {
+        input.selectedIndex = 1;
+        filledCount++;
+      } else if (type === 'text') {
+        val = `Test ${input.name || 'Input'} ${randomNum}`;
+      }
+
+      if (val) {
+        input.value = val;
+        // Trigger synthetic events for React/Vue/Angular
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        filledCount++;
+      }
+    });
+
+    showToast(`🧪 Mock Form Filled: ${filledCount} fields populated!`, 'bolt', true);
+  }
+
+  // 11. ⚡ Dev Swiss-Knife & Scratchpad Modal
+  function openDevSwissKnifeModal(initialTab = 'scratchpad') {
+    let backdrop = document.getElementById('directdrop-swiss-backdrop');
+    if (backdrop) backdrop.remove();
+
+    backdrop = document.createElement('div');
+    backdrop.id = 'directdrop-swiss-backdrop';
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) backdrop.remove();
+    };
+
+    const modal = document.createElement('div');
+    modal.id = 'directdrop-swiss-modal';
+    backdrop.appendChild(modal);
+    document.body.appendChild(backdrop);
+
+    chrome.storage.local.get(['scratchpadNotes'], (res) => {
+      const savedNotes = res.scratchpadNotes || '';
+
+      modal.innerHTML = `
+        <div class="directdrop-modal-header">
+          <div class="directdrop-modal-title">⚡ Dev Swiss-Knife & Workspace</div>
+          <button class="directdrop-modal-close" id="btnCloseSwiss">&times;</button>
+        </div>
+
+        <div class="directdrop-filter-row">
+          <button class="directdrop-pill-btn ${initialTab === 'scratchpad' ? 'active' : ''}" id="tabSwissNotes">📝 Scratchpad</button>
+          <button class="directdrop-pill-btn ${initialTab === 'json' ? 'active' : ''}" id="tabSwissJson">🔧 JSON Tool</button>
+          <button class="directdrop-pill-btn ${initialTab === 'jwt' ? 'active' : ''}" id="tabSwissJwt">🔐 JWT Decoder</button>
+          <button class="directdrop-pill-btn ${initialTab === 'base64' ? 'active' : ''}" id="tabSwissB64">📦 Base64</button>
+          <button class="directdrop-pill-btn ${initialTab === 'uuid' ? 'active' : ''}" id="tabSwissUuid">🆔 UUID v4</button>
+          <button class="directdrop-pill-btn ${initialTab === 'summarizer' ? 'active' : ''}" id="tabSwissSummary">🧠 TL;DR</button>
+        </div>
+
+        <div id="swissContent" style="flex: 1; display: flex; flex-direction: column;"></div>
+
+        <div class="directdrop-modal-actions" style="margin-top: 14px;">
+          <button class="directdrop-btn directdrop-btn-secondary" id="btnQuickMockFill">🧪 Fill Active Page Form</button>
+          <button class="directdrop-btn" id="btnSwissCopyResult">📋 Copy Output</button>
+        </div>
+      `;
+
+      document.getElementById('btnCloseSwiss').onclick = () => backdrop.remove();
+      document.getElementById('btnQuickMockFill').onclick = () => {
+        backdrop.remove();
+        fillMockFormData();
+      };
+
+      const contentBox = document.getElementById('swissContent');
+      let currentOutput = '';
+
+      function renderTab(tab) {
+        document.querySelectorAll('#directdrop-swiss-modal .directdrop-pill-btn').forEach(b => b.classList.remove('active'));
+
+        if (tab === 'scratchpad') {
+          document.getElementById('tabSwissNotes').classList.add('active');
+          contentBox.innerHTML = `
+            <textarea class="directdrop-swiss-textarea" id="scratchpadArea" placeholder="Write temporary notes, ideas, code snippets... (auto-saved)">${escapeHtml(savedNotes)}</textarea>
+            <span style="font-size: 10px; color: #71717a; margin-top: 6px;">Notes are persisted securely in local extension storage.</span>
+          `;
+          const area = document.getElementById('scratchpadArea');
+          area.oninput = (e) => {
+            currentOutput = e.target.value;
+            chrome.storage.local.set({ scratchpadNotes: e.target.value });
+          };
+          currentOutput = savedNotes;
+        } else if (tab === 'json') {
+          document.getElementById('tabSwissJson').classList.add('active');
+          contentBox.innerHTML = `
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <button class="directdrop-btn" id="btnBeautifyJson" style="padding: 4px 10px; font-size: 11px;">Beautify (Format)</button>
+              <button class="directdrop-btn directdrop-btn-secondary" id="btnMinifyJson" style="padding: 4px 10px; font-size: 11px;">Minify</button>
+            </div>
+            <textarea class="directdrop-swiss-textarea" id="jsonArea" placeholder="Paste ugly JSON here..."></textarea>
+          `;
+          const jsonArea = document.getElementById('jsonArea');
+          document.getElementById('btnBeautifyJson').onclick = () => {
+            try {
+              const parsed = JSON.parse(jsonArea.value);
+              jsonArea.value = JSON.stringify(parsed, null, 2);
+              currentOutput = jsonArea.value;
+            } catch (err) {
+              jsonArea.value = `❌ Invalid JSON: ${err.message}`;
+            }
+          };
+          document.getElementById('btnMinifyJson').onclick = () => {
+            try {
+              const parsed = JSON.parse(jsonArea.value);
+              jsonArea.value = JSON.stringify(parsed);
+              currentOutput = jsonArea.value;
+            } catch (err) {
+              jsonArea.value = `❌ Invalid JSON: ${err.message}`;
+            }
+          };
+        } else if (tab === 'jwt') {
+          document.getElementById('tabSwissJwt').classList.add('active');
+          contentBox.innerHTML = `
+            <textarea class="directdrop-swiss-textarea" style="height: 90px;" id="jwtInput" placeholder="Paste eyJhbGciOiJIUzI1Ni... token here"></textarea>
+            <textarea class="directdrop-swiss-textarea" style="height: 140px; margin-top: 8px;" id="jwtOutput" readonly placeholder="Decoded Header & Payload"></textarea>
+          `;
+          const input = document.getElementById('jwtInput');
+          const output = document.getElementById('jwtOutput');
+          input.oninput = () => {
+            try {
+              const parts = input.value.trim().split('.');
+              if (parts.length >= 2) {
+                const header = JSON.parse(atob(parts[0]));
+                const payload = JSON.parse(atob(parts[1]));
+                output.value = `// HEADER\n${JSON.stringify(header, null, 2)}\n\n// PAYLOAD\n${JSON.stringify(payload, null, 2)}`;
+                currentOutput = output.value;
+              } else {
+                output.value = 'Awaiting valid 3-part JWT token...';
+              }
+            } catch (e) {
+              output.value = `❌ Error decoding JWT: ${e.message}`;
+            }
+          };
+        } else if (tab === 'base64') {
+          document.getElementById('tabSwissB64').classList.add('active');
+          contentBox.innerHTML = `
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <button class="directdrop-btn" id="btnB64Encode" style="padding: 4px 10px; font-size: 11px;">Encode to Base64</button>
+              <button class="directdrop-btn directdrop-btn-secondary" id="btnB64Decode" style="padding: 4px 10px; font-size: 11px;">Decode from Base64</button>
+            </div>
+            <textarea class="directdrop-swiss-textarea" id="b64Area" placeholder="Enter text to encode or decode..."></textarea>
+          `;
+          const b64Area = document.getElementById('b64Area');
+          document.getElementById('btnB64Encode').onclick = () => {
+            b64Area.value = btoa(unescape(encodeURIComponent(b64Area.value)));
+            currentOutput = b64Area.value;
+          };
+          document.getElementById('btnB64Decode').onclick = () => {
+            try {
+              b64Area.value = decodeURIComponent(escape(atob(b64Area.value.trim())));
+              currentOutput = b64Area.value;
+            } catch (e) {
+              b64Area.value = `❌ Invalid Base64: ${e.message}`;
+            }
+          };
+        } else if (tab === 'uuid') {
+          document.getElementById('tabSwissUuid').classList.add('active');
+          const generateUuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+          const list = Array.from({ length: 5 }, generateUuid);
+          contentBox.innerHTML = `
+            <div style="margin-bottom: 10px;">
+              <button class="directdrop-btn" id="btnRegenUuid" style="padding: 5px 12px; font-size: 11px;">🔄 Generate New UUIDs</button>
+            </div>
+            <div id="uuidList" style="display: flex; flex-direction: column; gap: 8px;">
+              ${list.map(u => `<div class="directdrop-link-row"><span style="font-family: monospace; font-size: 13px; color: #10b981;">${u}</span><button class="directdrop-btn directdrop-btn-secondary" style="padding: 3px 8px; font-size: 10px;" onclick="navigator.clipboard.writeText('${u}')">Copy</button></div>`).join('')}
+            </div>
+          `;
+          currentOutput = list.join('\n');
+          document.getElementById('btnRegenUuid').onclick = () => renderTab('uuid');
+        } else if (tab === 'summarizer') {
+          document.getElementById('tabSwissSummary').classList.add('active');
+          const pageTitle = document.title || 'Webpage';
+          const bodyText = (document.body?.innerText || '').replace(/\s+/g, ' ').substring(0, 3000);
+          
+          // Generate quick extractive summary
+          const sentences = bodyText.split(/(?<=[.?!])\s+/).filter(s => s.length > 40 && s.length < 180);
+          const topBullets = sentences.slice(0, 3);
+
+          contentBox.innerHTML = `
+            <div style="background: #09090b; padding: 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
+              <h3 style="font-size: 14px; color: #10b981; margin-bottom: 8px;">🧠 30-Second TL;DR: "${escapeHtml(pageTitle)}"</h3>
+              <ul style="padding-left: 18px; font-size: 12px; color: #d4d4d8; line-height: 1.6;">
+                ${topBullets.map(b => `<li style="margin-bottom: 6px;">${escapeHtml(b)}</li>`).join('')}
+              </ul>
+            </div>
+          `;
+          currentOutput = `TL;DR: ${pageTitle}\n\n` + topBullets.map(b => `- ${b}`).join('\n');
+        }
+      }
+
+      document.getElementById('tabSwissNotes').onclick = () => renderTab('scratchpad');
+      document.getElementById('tabSwissJson').onclick = () => renderTab('json');
+      document.getElementById('tabSwissJwt').onclick = () => renderTab('jwt');
+      document.getElementById('tabSwissB64').onclick = () => renderTab('base64');
+      document.getElementById('tabSwissUuid').onclick = () => renderTab('uuid');
+      document.getElementById('tabSwissSummary').onclick = () => renderTab('summarizer');
+
+      document.getElementById('btnSwissCopyResult').onclick = () => {
+        if (currentOutput) {
+          copyToClipboard(currentOutput);
+          showToast('📋 Copied output to clipboard!', 'bolt', true);
+        }
+      };
+
+      // Initial render
+      renderTab(initialTab);
     });
   }
 
-  // 9. Real Download & Movie Server Highlighter
+  // 12. Batch Episode Grabber
+  let grabbedLinks = [];
+  let currentActiveQuality = 'All';
+  let currentSearchQuery = '';
+
   const FILE_EXTENSIONS = [
     '.zip', '.rar', '.7z', '.tar', '.gz', '.xz', '.bz2', '.iso',
     '.exe', '.msi', '.apk', '.dmg', '.pkg', '.deb', '.rpm', '.appx',
@@ -253,73 +570,6 @@
     'yllix', 'popads', 'popcash', 'exoclick', 'trafficjunky', '1xbet', 'bet365', 'casino'
   ];
 
-  function highlightRealDownloadLinks() {
-    if (!config.enabled || !config.highlightLinks) return;
-
-    const links = document.querySelectorAll('a[href]');
-    links.forEach((a) => {
-      const href = (a.getAttribute('href') || '').toLowerCase();
-      const text = (a.innerText || '').trim();
-
-      const isFileExtension = FILE_EXTENSIONS.some((ext) => href.includes(ext));
-      const isTrustedHost = TRUSTED_FILE_HOSTS.some((host) => href.includes(host));
-      const isServerButton = /server|fsl|pixel|buzz|hubcloud|10gbps/i.test(text + ' ' + href);
-
-      if (isFileExtension || isTrustedHost || isServerButton) {
-        if (!a.classList.contains('directdrop-real-download-target')) {
-          a.classList.add('directdrop-real-download-target');
-          
-          if (!a.querySelector('.directdrop-real-download-badge')) {
-            const badge = document.createElement('span');
-            badge.className = 'directdrop-real-download-badge' + (isServerButton ? ' directdrop-server-badge' : '');
-            badge.innerHTML = isServerButton ? '⚡ Verified Server' : '⚡ Verified File';
-            a.appendChild(badge);
-          }
-        }
-        return;
-      }
-
-      const isDeceptiveText = /^(download|start download|download now|direct download|install)$/i.test(text);
-      const isAdDomain = AD_DOMAINS.some((d) => href.includes(d));
-
-      if (isDeceptiveText && isAdDomain) {
-        if (!a.classList.contains('directdrop-fake-ad-dimmed')) {
-          a.classList.add('directdrop-fake-ad-dimmed');
-          if (!a.querySelector('.directdrop-fake-ad-badge')) {
-            const fakeBadge = document.createElement('span');
-            fakeBadge.className = 'directdrop-fake-ad-badge';
-            fakeBadge.innerText = '⚠️ Ad';
-            a.appendChild(fakeBadge);
-          }
-        }
-      }
-    });
-  }
-
-  // 10. Unlock Hidden Download Buttons
-  function unlockHiddenButtons() {
-    if (!config.enabled || !config.skipTimers) return;
-
-    const downloadSelectors = [
-      'button[disabled]', 'a[disabled]', 
-      '.download-btn[disabled]', '#download[disabled]',
-      '[id*="download"][style*="display: none"]',
-      '[class*="download"][style*="display: none"]'
-    ];
-
-    document.querySelectorAll(downloadSelectors.join(',')).forEach((btn) => {
-      if (btn.hasAttribute('disabled')) {
-        btn.removeAttribute('disabled');
-        btn.style.pointerEvents = 'auto';
-        btn.style.opacity = '1';
-      }
-      if (btn.style.display === 'none') {
-        btn.style.display = 'inline-block';
-      }
-    });
-  }
-
-  // 11. Filename Cleaner & Quality Classifier
   function cleanFileName(raw) {
     if (!raw) return 'Direct_File';
     return raw
@@ -340,11 +590,6 @@
     if (/480p|sd|300mb/i.test(t)) return '480p';
     return 'Other';
   }
-
-  // 12. Batch Episode Grabber (with Quality Tabs, Headless Scripts, Webhooks)
-  let grabbedLinks = [];
-  let currentActiveQuality = 'All';
-  let currentSearchQuery = '';
 
   function scanDownloadableLinks() {
     const validLinks = [];
@@ -457,7 +702,6 @@
         ${linksHtml || '<div style="color: #71717a; text-align: center; padding: 24px;">No files matching this filter.</div>'}
       </div>
 
-      <!-- Developer & Downloader Action Bar -->
       <div class="directdrop-modal-actions">
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropExportPython">🐍 Python Script</button>
@@ -472,7 +716,6 @@
       </div>
     `;
 
-    // Event handlers
     document.getElementById('btnDirectDropCloseModal').onclick = () => {
       document.getElementById('directdrop-grabber-backdrop')?.remove();
     };
@@ -495,39 +738,33 @@
       }
     };
 
-    // Copy All for IDM
     document.getElementById('btnDirectDropCopyAll').onclick = () => {
       const activeList = getFilteredLinks();
       const text = activeList.map(l => l.url).join('\n');
       copyToClipboard(text);
-      showToast(`⚡ Copied ${activeList.length} links for IDM / JDownloader!`, 'bolt', true);
+      showToast(`⚡ Copied ${activeList.length} links for IDM!`, 'bolt', true);
     };
 
-    // Export Python Script (Headless Downloader)
     document.getElementById('btnDirectDropExportPython').onclick = () => {
       const activeList = getFilteredLinks();
       exportPythonDownloader(activeList);
     };
 
-    // Export Bash / aria2c Script
     document.getElementById('btnDirectDropExportBash').onclick = () => {
       const activeList = getFilteredLinks();
       exportBashDownloader(activeList);
     };
 
-    // Trigger Webhook Dispatcher
     document.getElementById('btnDirectDropWebhook').onclick = () => {
       const activeList = getFilteredLinks();
       dispatchWebhook(activeList);
     };
 
-    // Send to Motrix / Aria2 JSON-RPC
     document.getElementById('btnDirectDropSendRpc').onclick = () => {
       const activeList = getFilteredLinks();
       sendToAria2Rpc(activeList.map(l => l.url));
     };
 
-    // Find Subtitles (.SRT)
     document.getElementById('btnDirectDropFindSubs').onclick = () => {
       const movieQuery = cleanFileName(document.title || '').replace(/download|full movie|watch online|hindi|line/gi, '').trim();
       const searchUrl = `https://subsource.net/subtitles?search=${encodeURIComponent(movieQuery)}`;
@@ -553,7 +790,6 @@ HEADERS = {
 
 def download_file(item):
     filename = item["name"]
-    # Append appropriate extension if missing
     if "." not in filename[-5:]:
         ext = os.path.splitext(urlparse(item["url"]).path)[1]
         filename += ext or ".mkv"
@@ -591,8 +827,6 @@ if __name__ == "__main__":
     const urls = links.map(l => l.url).join('\n');
     const bashScript = `#!/bin/bash
 # DirectDrop Headless Bash Downloader
-# Requires aria2: sudo apt install aria2
-
 cat << 'EOF' > download_urls.txt
 ${urls}
 EOF
@@ -623,7 +857,7 @@ echo "[+] All downloads finished!"
   function dispatchWebhook(links) {
     const endpoint = config.webhookUrl;
     if (!endpoint) {
-      showToast('⚠️ No Webhook URL set! Please configure it in extension popup ➔ Dev Tools tab.', 'shield', true);
+      showToast('⚠️ No Webhook URL set! Configure it in extension popup ➔ Dev Tools tab.', 'shield', true);
       return;
     }
 
@@ -713,9 +947,8 @@ echo "[+] All downloads finished!"
     });
   }
 
-  // 16. Web Asset & API Payload Sniffer (Developer Tool)
+  // 16. Web Asset & API Payload Sniffer
   function sniffAndShowPageAssets() {
-    // 1. Collect SVGs
     const svgs = [];
     document.querySelectorAll('svg').forEach((svg, idx) => {
       const clone = svg.cloneNode(true);
@@ -728,7 +961,6 @@ echo "[+] All downloads finished!"
       });
     });
 
-    // 2. Collect Images & Media
     const images = [];
     const seenImg = new Set();
     document.querySelectorAll('img, picture source').forEach((el) => {
@@ -739,7 +971,6 @@ echo "[+] All downloads finished!"
       }
     });
 
-    // 3. Collect Hidden State / API Endpoints
     const apiData = [];
     if (window.__NEXT_DATA__) {
       apiData.push({ label: 'Next.js __NEXT_DATA__', data: JSON.stringify(window.__NEXT_DATA__, null, 2) });
@@ -748,7 +979,6 @@ echo "[+] All downloads finished!"
       apiData.push({ label: 'Nuxt.js __NUXT__', data: JSON.stringify(window.__NUXT__, null, 2) });
     }
 
-    // Render Asset Sniffer Drawer
     let drawer = document.getElementById('directdrop-sniffer-drawer');
     if (drawer) drawer.remove();
 
@@ -781,8 +1011,7 @@ echo "[+] All downloads finished!"
     document.body.appendChild(drawer);
 
     const contentBox = document.getElementById('snifferContent');
-    const closeBtn = document.getElementById('btnCloseSniffer');
-    closeBtn.onclick = () => drawer.remove();
+    document.getElementById('btnCloseSniffer').onclick = () => drawer.remove();
 
     function showSvgTab() {
       contentBox.innerHTML = svgs.map(s => `
@@ -793,7 +1022,7 @@ echo "[+] All downloads finished!"
             </div>
             <span style="font-size: 11px; color: #a1a1aa; font-family: monospace;">SVG #${s.id} (${s.width}x${s.height})</span>
           </div>
-          <button class="directdrop-btn directdrop-btn-secondary" style="padding: 4px 8px; font-size: 10px;" onclick="navigator.clipboard.writeText(${escapeQuotes(s.code)})">Copy Code</button>
+          <button class="directdrop-btn directdrop-btn-secondary" style="padding: 4px 8px; font-size: 10px;" onclick="navigator.clipboard.writeText(${JSON.stringify(s.code)})">Copy Code</button>
         </div>
       `).join('') || '<div style="color: #71717a; text-align: center; padding: 20px;">No SVG icons found.</div>';
     }
@@ -841,15 +1070,122 @@ echo "[+] All downloads finished!"
       showToast(`⬇ Downloaded ${svgs.length} SVGs!`, 'bolt', true);
     };
 
-    // Initial show
     showSvgTab();
   }
 
-  function escapeQuotes(str) {
-    return JSON.stringify(str);
+  // 17. Unshortener Helper
+  const REDIRECT_PARAMS = [
+    'url', 'dest', 'target', 'link', 'to', 'u', 'redirect', 'redirect_url', 
+    'destination', 'dl', 'download_url', 'out', 'r'
+  ];
+
+  function unwrapUrl(href) {
+    try {
+      const urlObj = new URL(href, window.location.href);
+      for (const param of REDIRECT_PARAMS) {
+        const val = urlObj.searchParams.get(param);
+        if (!val) continue;
+
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+          return decodeURIComponent(val);
+        }
+
+        if (val.length > 15 && /^[A-Za-z0-9+/=]+$/.test(val)) {
+          try {
+            const decoded = atob(val);
+            if (decoded.startsWith('http://') || decoded.startsWith('https://')) {
+              return decoded;
+            }
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+    return null;
   }
 
-  // 17. Google Drive Quota & TeraBox Unlocker
+  function processRedirectLinks() {
+    if (!config.enabled || !config.unwrapRedirects) return;
+
+    const links = document.querySelectorAll('a[href]:not([data-directdrop-checked])');
+    links.forEach((a) => {
+      a.setAttribute('data-directdrop-checked', 'true');
+      const href = a.getAttribute('href');
+      if (!href || href.startsWith('javascript:') || href.startsWith('#')) return;
+
+      const unwrapped = unwrapUrl(href);
+      if (unwrapped) {
+        a.href = unwrapped;
+        stats.linksBypassed++;
+        updateStats('linksBypassed');
+      }
+    });
+  }
+
+  function highlightRealDownloadLinks() {
+    if (!config.enabled || !config.highlightLinks) return;
+
+    const links = document.querySelectorAll('a[href]');
+    links.forEach((a) => {
+      const href = (a.getAttribute('href') || '').toLowerCase();
+      const text = (a.innerText || '').trim();
+
+      const isFileExtension = FILE_EXTENSIONS.some((ext) => href.includes(ext));
+      const isTrustedHost = TRUSTED_FILE_HOSTS.some((host) => href.includes(host));
+      const isServerButton = /server|fsl|pixel|buzz|hubcloud|10gbps/i.test(text + ' ' + href);
+
+      if (isFileExtension || isTrustedHost || isServerButton) {
+        if (!a.classList.contains('directdrop-real-download-target')) {
+          a.classList.add('directdrop-real-download-target');
+          
+          if (!a.querySelector('.directdrop-real-download-badge')) {
+            const badge = document.createElement('span');
+            badge.className = 'directdrop-real-download-badge' + (isServerButton ? ' directdrop-server-badge' : '');
+            badge.innerHTML = isServerButton ? '⚡ Verified Server' : '⚡ Verified File';
+            a.appendChild(badge);
+          }
+        }
+        return;
+      }
+
+      const isDeceptiveText = /^(download|start download|download now|direct download|install)$/i.test(text);
+      const isAdDomain = AD_DOMAINS.some((d) => href.includes(d));
+
+      if (isDeceptiveText && isAdDomain) {
+        if (!a.classList.contains('directdrop-fake-ad-dimmed')) {
+          a.classList.add('directdrop-fake-ad-dimmed');
+          if (!a.querySelector('.directdrop-fake-ad-badge')) {
+            const fakeBadge = document.createElement('span');
+            fakeBadge.className = 'directdrop-fake-ad-badge';
+            fakeBadge.innerText = '⚠️ Ad';
+            a.appendChild(fakeBadge);
+          }
+        }
+      }
+    });
+  }
+
+  function unlockHiddenButtons() {
+    if (!config.enabled || !config.skipTimers) return;
+
+    const downloadSelectors = [
+      'button[disabled]', 'a[disabled]', 
+      '.download-btn[disabled]', '#download[disabled]',
+      '[id*="download"][style*="display: none"]',
+      '[class*="download"][style*="display: none"]'
+    ];
+
+    document.querySelectorAll(downloadSelectors.join(',')).forEach((btn) => {
+      if (btn.hasAttribute('disabled')) {
+        btn.removeAttribute('disabled');
+        btn.style.pointerEvents = 'auto';
+        btn.style.opacity = '1';
+      }
+      if (btn.style.display === 'none') {
+        btn.style.display = 'inline-block';
+      }
+    });
+  }
+
   function cloudLockerUnlocker() {
     if (!config.enabled || !config.cloudUnlocker) return;
 
@@ -868,7 +1204,6 @@ echo "[+] All downloads finished!"
     }
   }
 
-  // 18. Video Stream Sniffer
   function sniffVideoStreams() {
     if (!config.enabled || !config.streamSniffer) return;
 
@@ -906,10 +1241,12 @@ echo "[+] All downloads finished!"
     });
   }
 
-  // 19. Master Protection Cycle
+  // 18. Master Runner Cycle
   function runProtectionCycle() {
     neutralizeTraps();
     defeatAntiAdblock();
+    handleYouTube();
+    handleGitHub();
     processRedirectLinks();
     highlightRealDownloadLinks();
     unlockHiddenButtons();
@@ -925,8 +1262,13 @@ echo "[+] All downloads finished!"
   }
   window.addEventListener('load', runProtectionCycle);
 
-  // Periodic check
+  // Periodic scan (1500ms)
   setInterval(runProtectionCycle, 1500);
+
+  // Faster interval for YouTube video ads (500ms)
+  if (window.location.hostname.includes('youtube.com')) {
+    setInterval(handleYouTube, 500);
+  }
 
   const observer = new MutationObserver(() => {
     runProtectionCycle();
@@ -937,5 +1279,5 @@ echo "[+] All downloads finished!"
     subtree: true
   });
 
-  console.log('[DirectDrop Pro v3.5 Dev Edition] ⚡ Silent Mode Active (Python Exporter, Webhooks, Asset Sniffer ready)');
+  console.log('[DirectDrop Pro v4.0 OLED] ⚡ Productive Suite Active (YT AdBlock, Dev Swiss-Knife, Mock Form Filler, GitHub Actions)');
 })();

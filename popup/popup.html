@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DirectDrop Pro - Dev & Founder Edition</title>
+  <title>DirectDrop Pro - Productivity & Dev Suite</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
         <div class="logo-badge">⚡</div>
         <div class="brand-text">
           <h1>DirectDrop Pro</h1>
-          <span class="version-pill">v3.5 Dev Edition</span>
+          <span class="version-pill">v4.0 Dev Suite</span>
         </div>
       </div>
       <label class="switch master-switch">
@@ -25,12 +25,12 @@
 
     <!-- Navigation Tabs -->
     <div class="tab-nav">
-      <button class="tab-btn active" id="tabBtnShields">🛡️ Shields</button>
+      <button class="tab-btn active" id="tabBtnShields">🛡️ Shields & YT</button>
       <button class="tab-btn" id="tabBtnTools">⚙️ Downloader</button>
-      <button class="tab-btn" id="tabBtnDev">💻 Dev Tools</button>
+      <button class="tab-btn" id="tabBtnDev">⚡ Productivity</button>
     </div>
 
-    <!-- TAB 1: SHIELDS & STATS -->
+    <!-- TAB 1: SHIELDS, YOUTUBE & STATS -->
     <div id="tabContentShields">
       <!-- Stats Grid -->
       <div class="stats-grid">
@@ -43,17 +43,17 @@
           <span class="stat-label">Tabs Killed</span>
         </div>
         <div class="stat-card">
-          <span class="stat-num" id="statLinks">0</span>
-          <span class="stat-label">Direct Links</span>
+          <span class="stat-num" id="statYtAds">0</span>
+          <span class="stat-label">YT Ads Skipped</span>
         </div>
       </div>
 
-      <div class="section-title">EXPERIENCE & NOTIFICATIONS</div>
+      <!-- Silent Mode -->
       <div class="features-list" style="margin-bottom: 10px;">
         <div class="feature-item" style="border-color: rgba(16, 185, 129, 0.3);">
           <div class="feature-info">
-            <span class="feature-title" style="color: #10b981;">🔕 Silent Mode (Mute Toasts)</span>
-            <span class="feature-desc">Disable on-screen floating notification popups</span>
+            <span class="feature-title" style="color: #10b981;">🔕 Silent Mode (Zero Toasts)</span>
+            <span class="feature-desc">Mute all on-screen notification toasts</span>
           </div>
           <label class="switch">
             <input type="checkbox" id="toggleSilentMode" checked>
@@ -62,7 +62,34 @@
         </div>
       </div>
 
-      <div class="section-title">CORE PROTECTIONS</div>
+      <!-- YouTube AdBlocker Section -->
+      <div class="section-title">YOUTUBE ADBLOCK & FOCUS</div>
+      <div class="features-list" style="margin-bottom: 10px;">
+        <div class="feature-item" style="border-color: rgba(239, 68, 68, 0.3);">
+          <div class="feature-info">
+            <span class="feature-title" style="color: #f87171;">▶ YouTube AdBlock & Fast-Skip</span>
+            <span class="feature-desc">Instant skip, fast-forward & anti-adblock bypass</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggleYtAdblock" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-info">
+            <span class="feature-title">Focus Mode: Hide YT Shorts</span>
+            <span class="feature-desc">Remove addictive Shorts shelf & sidebar link</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggleYtHideShorts">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Core Protections -->
+      <div class="section-title">CORE DOWNLOAD PROTECTIONS</div>
       <div class="features-list">
         <div class="feature-item">
           <div class="feature-info">
@@ -178,48 +205,59 @@
       </div>
     </div>
 
-    <!-- TAB 3: DEVELOPER & FOUNDER TOOLS -->
+    <!-- TAB 3: PRODUCTIVITY & DEV TOOLS -->
     <div id="tabContentDev" style="display: none;">
-      <div class="section-title">WEBHOOK / VPS DISPATCHER</div>
-      <div class="rpc-config-box">
-        <label class="rpc-label">Webhook Endpoint (Discord / VPS / R2 / n8n):</label>
-        <input type="text" class="rpc-input" id="webhookUrlInput" placeholder="https://discord.com/api/webhooks/... or VPS">
-        <span style="font-size: 10px; color: #71717a; margin-top: 5px; display: block;">Push grabbed links directly to Discord, S3/R2 Worker, or Linux server.</span>
-      </div>
-
-      <div class="section-title">DEVELOPER INSPECTOR</div>
-      <div class="actions" style="margin-top: 6px;">
-        <button class="btn btn-primary" id="btnSniffAssets" style="background: #06b6d4; color: #000;">
+      <div class="section-title">DEVELOPER QUICK ACTIONS</div>
+      <div class="actions" style="margin-top: 6px; display: flex; flex-direction: column; gap: 8px;">
+        <button class="btn btn-primary" id="btnOpenSwissKnife" style="background: #10b981; color: #000;">
+          ⚡ Open Dev Swiss-Knife & Scratchpad
+        </button>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" id="btnQuickMockFill" style="flex: 1;">
+            🧪 Mock Form Fill
+          </button>
+          <button class="btn btn-secondary" id="btnQuickSummarize" style="flex: 1;">
+            🧠 Page TL;DR
+          </button>
+        </div>
+        <button class="btn btn-secondary" id="btnSniffAssets">
           🕵️ Sniff Page Assets & APIs
         </button>
       </div>
 
-      <div class="features-list" style="margin-top: 12px;">
+      <div class="section-title" style="margin-top: 14px;">AUTOMATION & WEBHOOKS</div>
+      <div class="rpc-config-box">
+        <label class="rpc-label">Webhook Endpoint (Discord / VPS / R2):</label>
+        <input type="text" class="rpc-input" id="webhookUrlInput" placeholder="https://discord.com/api/webhooks/... or VPS">
+        <span style="font-size: 10px; color: #71717a; margin-top: 5px; display: block;">Push links to Discord, Cloudflare R2, or VPS.</span>
+      </div>
+
+      <div class="features-list" style="margin-top: 10px;">
         <div class="feature-item">
           <div class="feature-info">
-            <span class="feature-title">Headless Scripts in Grabber</span>
-            <span class="feature-desc">Export as Python script & cURL commands</span>
+            <span class="feature-title">GitHub Power Actions</span>
+            <span class="feature-desc">1-Click github.dev (VS Code) & clone copy</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggleGithubActions" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="feature-item">
+          <div class="feature-info">
+            <span class="feature-title">Headless Script Exporters</span>
+            <span class="feature-desc">Export as Python & aria2c bash script</span>
           </div>
           <label class="switch">
             <input type="checkbox" id="toggleHeadlessExport" checked>
             <span class="slider"></span>
           </label>
         </div>
-
-        <div class="feature-item">
-          <div class="feature-info">
-            <span class="feature-title">Video Stream Sniffer</span>
-            <span class="feature-desc">Capture direct MP4 & M3U8 stream URLs</span>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="toggleSniffer" checked>
-            <span class="slider"></span>
-          </label>
-        </div>
       </div>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Actions -->
     <div class="actions">
       <button class="btn btn-primary" id="btnTestPlayground">
         🧪 Open Test Playground
@@ -230,8 +268,8 @@
     </div>
 
     <footer class="footer">
-      <span><span class="footer-dot"></span> Dev Mode Active</span>
-      <span>DirectDrop Pro</span>
+      <span><span class="footer-dot"></span> All Systems Operational</span>
+      <span>DirectDrop Pro v4.0</span>
     </footer>
   </div>
 

@@ -1,4 +1,4 @@
-/* DirectDrop Pro v3.0 OLED Content Styles */
+/* DirectDrop Pro v4.0 OLED Edition - Productivity & Dev Styles */
 
 /* 1. Highlight Genuine Download Links */
 .directdrop-real-download-target {
@@ -141,26 +141,26 @@
   box-shadow: 0 12px 35px rgba(16, 185, 129, 0.6) !important;
 }
 
-/* 5. OLED Pitch-Black Batch Links Modal */
-#directdrop-grabber-backdrop {
+/* 5. OLED Pitch-Black Modal System */
+#directdrop-grabber-backdrop, #directdrop-swiss-backdrop {
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(0, 0, 0, 0.8) !important;
-  backdrop-filter: blur(8px) !important;
+  background: rgba(0, 0, 0, 0.82) !important;
+  backdrop-filter: blur(10px) !important;
   z-index: 2147483646 !important;
 }
 
-#directdrop-grabber-modal {
+#directdrop-grabber-modal, #directdrop-swiss-modal {
   position: fixed !important;
   top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) !important;
   z-index: 2147483647 !important;
   width: 92% !important;
-  max-width: 720px !important;
+  max-width: 740px !important;
   max-height: 85vh !important;
   background: #000000 !important;
   color: #f4f4f5 !important;
@@ -206,7 +206,7 @@
   color: #ffffff !important;
 }
 
-/* Quality Filter Tabs & Search Bar */
+/* Filter Row & Input */
 .directdrop-filter-row {
   display: flex !important;
   gap: 8px !important;
@@ -390,4 +390,71 @@
   background: #06b6d4 !important;
   color: #000000 !important;
   transform: scale(1.05) !important;
+}
+
+/* 7. YouTube Ad Blocker & Distraction Cleaner Styles */
+/* Hide YouTube ad slots, banners & sponsored elements */
+.ytd-banner-promo-renderer,
+ytd-ad-slot-renderer,
+ytd-in-feed-ad-layout-renderer,
+#masthead-ad,
+.ytp-ad-overlay-container,
+.ytp-ad-message-container,
+ytd-player-legacy-desktop-watch-ads-renderer,
+#player-ads {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* YouTube Shorts Blocker (Focus Mode) */
+body.directdrop-hide-shorts ytd-reel-shelf-renderer,
+body.directdrop-hide-shorts ytd-rich-shelf-renderer[is-shorts],
+body.directdrop-hide-shorts [title="Shorts"],
+body.directdrop-hide-shorts a[href^="/shorts"] {
+  display: none !important;
+}
+
+/* 8. GitHub Power Actions */
+.directdrop-github-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: #21262d !important;
+  color: #58a6ff !important;
+  border: 1px solid rgba(240, 246, 252, 0.1) !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  margin-left: 8px !important;
+  vertical-align: middle !important;
+  transition: all 0.2s !important;
+}
+
+.directdrop-github-btn:hover {
+  background: #30363d !important;
+  color: #79c0ff !important;
+}
+
+/* 9. Dev Swiss-Knife Workspace */
+.directdrop-swiss-textarea {
+  width: 100% !important;
+  height: 200px !important;
+  background: #09090b !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  color: #f4f4f5 !important;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-size: 12px !important;
+  resize: vertical !important;
+  outline: none !important;
+}
+
+.directdrop-swiss-textarea:focus {
+  border-color: #10b981 !important;
 }
