@@ -1,10 +1,11 @@
-// DirectDrop Pro v3.0 OLED Edition - Content Script
+// DirectDrop Pro v3.5 Dev & Founder Edition - Content Script
 (function () {
   'use strict';
 
   // Config & State
   let config = {
     enabled: true,
+    silentMode: true, // Default to SILENT (no annoying floating toasts)
     killTraps: true,
     skipTimers: true,
     highlightLinks: true,
@@ -16,7 +17,9 @@
     subtitleFinder: true,
     cloudUnlocker: true,
     streamSniffer: true,
-    rpcUrl: 'http://localhost:6800/jsonrpc'
+    headlessExport: true,
+    rpcUrl: 'http://localhost:6800/jsonrpc',
+    webhookUrl: ''
   };
 
   let stats = {
@@ -26,7 +29,7 @@
     tabsTerminated: 0
   };
 
-  // 1. Load settings & stats from chrome storage
+  // 1. Load settings & stats from storage
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(['settings', 'stats'], (res) => {
       if (res.settings) config = { ...config, ...res.settings };
@@ -42,7 +45,7 @@
     (document.head || document.documentElement).appendChild(s);
   } catch (err) {}
 
-  // 3. Listen for events from MAIN world page-script
+  // 3. Listen for events from MAIN world page-script (SILENT - NO ANNOYING TOASTS)
   window.addEventListener('__directdrop_msg__', (e) => {
     if (!config.enabled) return;
     const detail = e.detail || {};
@@ -50,11 +53,11 @@
     if (detail.action === 'popup_blocked') {
       stats.popupsBlocked++;
       updateStats('popupsBlocked');
-      showToast('🛡️ Blocked deceptive popup tab!', 'shield');
+      // Quiet background increment, no toast spam
     } else if (detail.action === 'timer_accelerated') {
       stats.linksBypassed++;
       updateStats('linksBypassed');
-      showToast('⏩ Fast-forwarded countdown timer!', 'bolt');
+      // Quiet background fast-forward, no toast spam
     }
   });
 
@@ -62,9 +65,11 @@
   chrome.runtime.onMessage.addListener((request) => {
     if (request.action === 'copy_to_clipboard' && request.text) {
       copyToClipboard(request.text);
-      showToast(request.msg || '⚡ Copied to clipboard!', 'bolt');
+      showToast(request.msg || '⚡ Copied to clipboard!', 'bolt', true);
     } else if (request.action === 'trigger_batch_grabber') {
       openBatchGrabberModal();
+    } else if (request.action === 'trigger_asset_sniffer') {
+      sniffAndShowPageAssets();
     }
   });
 
@@ -87,11 +92,14 @@
     }
   }
 
-  // 5. Toast Notifications (OLED Theme)
+  // 5. Toast Notifications (Muted when silentMode is enabled, unless explicitly forced)
   let toastContainer = null;
   let lastToastTime = 0;
 
-  function showToast(message, type = 'check') {
+  function showToast(message, type = 'check', force = false) {
+    // If silentMode is on and not explicitly forced by a user click, DO NOT SHOW
+    if (config.silentMode && !force) return;
+
     const now = Date.now();
     if (now - lastToastTime < 1000) return;
     lastToastTime = now;
@@ -115,10 +123,10 @@
       toast.style.opacity = '0';
       toast.style.transform = 'translateY(15px) scale(0.9)';
       setTimeout(() => toast.remove(), 300);
-    }, 2800);
+    }, 2500);
   }
 
-  // 6. Trap Neutralizer: Full-Screen Transparent Overlay Remover
+  // 6. Trap Neutralizer (Silent)
   function neutralizeTraps() {
     if (!config.enabled || !config.killTraps) return;
 
@@ -141,11 +149,9 @@
         if (coversScreen && isTransparent) {
           const hasLittleText = (el.innerText || '').trim().length < 25;
           if (hasLittleText) {
-            console.log('[DirectDrop] 🎯 Neutralized invisible click-trap:', el);
             el.remove();
             stats.trapsNeutralized++;
             updateStats('trapsNeutralized');
-            showToast('🛡️ Neutralized invisible click-trap!', 'shield');
           }
         }
       }
@@ -153,17 +159,15 @@
       if (el.tagName === 'A' && el.getAttribute('target') === '_blank') {
         const rect = el.getBoundingClientRect();
         if (rect.width >= viewWidth * 0.8 && rect.height >= viewHeight * 0.8) {
-          console.log('[DirectDrop] 🎯 Removed full-screen ad overlay:', el);
           el.remove();
           stats.trapsNeutralized++;
           updateStats('trapsNeutralized');
-          showToast('🛡️ Removed full-screen ad overlay!', 'shield');
         }
       }
     });
   }
 
-  // 7. Anti-Anti-AdBlocker (Unlocks blurred & frozen pages)
+  // 7. Anti-Anti-AdBlocker (Unlocks pages)
   function defeatAntiAdblock() {
     if (!config.enabled || !config.antiAdblock) return;
 
@@ -317,7 +321,7 @@
 
   // 11. Filename Cleaner & Quality Classifier
   function cleanFileName(raw) {
-    if (!raw) return 'Direct File';
+    if (!raw) return 'Direct_File';
     return raw
       .replace(/https?:\/\/[^\s]+/g, '')
       .replace(/www\.[a-z0-9\-]+\.[a-z]{2,}/gi, '')
@@ -337,7 +341,7 @@
     return 'Other';
   }
 
-  // 12. 📦 Batch Episode Grabber (with Quality Tabs & Aria2 RPC)
+  // 12. Batch Episode Grabber (with Quality Tabs, Headless Scripts, Webhooks)
   let grabbedLinks = [];
   let currentActiveQuality = 'All';
   let currentSearchQuery = '';
@@ -450,16 +454,19 @@
       </div>
 
       <div class="directdrop-links-list">
-        ${linksHtml || '<div style="color: #71717a; text-align: center; padding: 24px;">No files matching this quality/filter.</div>'}
+        ${linksHtml || '<div style="color: #71717a; text-align: center; padding: 24px;">No files matching this filter.</div>'}
       </div>
 
+      <!-- Developer & Downloader Action Bar -->
       <div class="directdrop-modal-actions">
-        <div style="display: flex; gap: 8px;">
-          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropFindSubs">💬 Find Subtitles (.SRT)</button>
-          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropExportTxt">📄 Export .txt</button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropExportPython">🐍 Python Script</button>
+          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropExportBash">💻 Bash / aria2c</button>
+          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropWebhook">📡 Webhook</button>
+          <button class="directdrop-btn directdrop-btn-secondary" id="btnDirectDropFindSubs">💬 Subtitles (.SRT)</button>
         </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="directdrop-btn directdrop-btn-rpc" id="btnDirectDropSendRpc">🚀 Send to Motrix/Aria2</button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="directdrop-btn directdrop-btn-rpc" id="btnDirectDropSendRpc">🚀 Send to Motrix</button>
           <button class="directdrop-btn" id="btnDirectDropCopyAll">📋 Copy Selected for IDM</button>
         </div>
       </div>
@@ -493,19 +500,25 @@
       const activeList = getFilteredLinks();
       const text = activeList.map(l => l.url).join('\n');
       copyToClipboard(text);
-      showToast(`⚡ Copied ${activeList.length} links for IDM / JDownloader!`, 'bolt');
+      showToast(`⚡ Copied ${activeList.length} links for IDM / JDownloader!`, 'bolt', true);
     };
 
-    // Export TXT
-    document.getElementById('btnDirectDropExportTxt').onclick = () => {
+    // Export Python Script (Headless Downloader)
+    document.getElementById('btnDirectDropExportPython').onclick = () => {
       const activeList = getFilteredLinks();
-      const text = activeList.map(l => l.url).join('\n');
-      const blob = new Blob([text], { type: 'text/plain' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${cleanFileName(document.title || 'download_links')}.txt`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      exportPythonDownloader(activeList);
+    };
+
+    // Export Bash / aria2c Script
+    document.getElementById('btnDirectDropExportBash').onclick = () => {
+      const activeList = getFilteredLinks();
+      exportBashDownloader(activeList);
+    };
+
+    // Trigger Webhook Dispatcher
+    document.getElementById('btnDirectDropWebhook').onclick = () => {
+      const activeList = getFilteredLinks();
+      dispatchWebhook(activeList);
     };
 
     // Send to Motrix / Aria2 JSON-RPC
@@ -519,18 +532,149 @@
       const movieQuery = cleanFileName(document.title || '').replace(/download|full movie|watch online|hindi|line/gi, '').trim();
       const searchUrl = `https://subsource.net/subtitles?search=${encodeURIComponent(movieQuery)}`;
       window.open(searchUrl, '_blank');
-      showToast(`💬 Searching subtitles for: "${movieQuery}"`, 'bolt');
+      showToast(`💬 Searching subtitles for: "${movieQuery}"`, 'bolt', true);
     };
   }
 
-  // 13. Motrix / Aria2 JSON-RPC Sender
+  // 13. Python & Bash Headless Script Generators
+  function exportPythonDownloader(links) {
+    const script = `#!/usr/bin/env python3
+# DirectDrop Headless Downloader Script
+# Generated for: ${escapeString(document.title)}
+import os
+import requests
+from urllib.parse import urlparse
+
+FILES = ${JSON.stringify(links.map(l => ({ name: l.name.replace(/[^a-zA-Z0-9_\-\. ]/g, '_'), url: l.url })), null, 4)}
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
+def download_file(item):
+    filename = item["name"]
+    # Append appropriate extension if missing
+    if "." not in filename[-5:]:
+        ext = os.path.splitext(urlparse(item["url"]).path)[1]
+        filename += ext or ".mkv"
+
+    print(f"[*] Downloading: {filename}")
+    try:
+        with requests.get(item["url"], headers=HEADERS, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            total_size = int(r.headers.get("content-length", 0))
+            downloaded = 0
+            with open(filename, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1024*1024):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total_size > 0:
+                            percent = (downloaded / total_size) * 100
+                            print(f"\\rProgress: {percent:.1f}% ({downloaded // (1024*1024)} MB / {total_size // (1024*1024)} MB)", end="")
+        print(f"\\n[+] Finished: {filename}")
+    except Exception as e:
+        print(f"\\n[-] Error downloading {filename}: {e}")
+
+if __name__ == "__main__":
+    print(f"Starting batch download of {len(FILES)} files...")
+    for file in FILES:
+        download_file(file)
+    print("All tasks completed successfully!")
+`;
+
+    downloadAsFile(script, 'download_script.py', 'text/x-python');
+    showToast('🐍 Python downloader script downloaded!', 'bolt', true);
+  }
+
+  function exportBashDownloader(links) {
+    const urls = links.map(l => l.url).join('\n');
+    const bashScript = `#!/bin/bash
+# DirectDrop Headless Bash Downloader
+# Requires aria2: sudo apt install aria2
+
+cat << 'EOF' > download_urls.txt
+${urls}
+EOF
+
+echo "[*] Launching multi-threaded aria2c download with 4 concurrent connections..."
+aria2c -i download_urls.txt -j 4 -s 4 -x 4 --auto-file-renaming=false --continue=true
+echo "[+] All downloads finished!"
+`;
+
+    downloadAsFile(bashScript, 'download.sh', 'text/x-sh');
+    showToast('💻 Bash download script exported!', 'bolt', true);
+  }
+
+  function downloadAsFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function escapeString(str) {
+    return (str || '').replace(/["'\\]/g, '');
+  }
+
+  // 14. Webhook Dispatcher
+  function dispatchWebhook(links) {
+    const endpoint = config.webhookUrl;
+    if (!endpoint) {
+      showToast('⚠️ No Webhook URL set! Please configure it in extension popup ➔ Dev Tools tab.', 'shield', true);
+      return;
+    }
+
+    showToast('📡 Dispatching links to webhook...', 'bolt', true);
+
+    const isDiscord = endpoint.includes('discord.com/api/webhooks');
+    let payload;
+
+    if (isDiscord) {
+      payload = {
+        username: "DirectDrop Pro",
+        avatar_url: "https://raw.githubusercontent.com/Extreme747/-DirectDrop-Pro-v2.0/main/icons/icon128.png",
+        content: `⚡ **${links.length} Direct Links Extracted from:** \`${document.title}\``,
+        embeds: links.slice(0, 10).map((l, i) => ({
+          title: `#${i + 1} ${l.name}`,
+          description: `[Direct Download Link](${l.url})`,
+          color: 0x10b981,
+          fields: [{ name: "Quality", value: l.quality, inline: true }]
+        }))
+      };
+    } else {
+      payload = {
+        event: "directdrop_links_extracted",
+        source_title: document.title,
+        source_url: window.location.href,
+        total_links: links.length,
+        links: links,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(() => {
+      showToast(`✅ Successfully dispatched ${links.length} links to webhook!`, 'bolt', true);
+    })
+    .catch((err) => {
+      showToast(`❌ Failed to send webhook: ${err.message}`, 'shield', true);
+    });
+  }
+
+  // 15. Motrix / Aria2 JSON-RPC Sender
   function sendToAria2Rpc(urls) {
     if (!urls || !urls.length) return;
     const rpcEndpoint = config.rpcUrl || 'http://localhost:6800/jsonrpc';
 
-    showToast(`🚀 Sending ${urls.length} links to Motrix / Aria2...`, 'bolt');
+    showToast(`🚀 Sending ${urls.length} links to Motrix / Aria2...`, 'bolt', true);
 
-    // Send each URL sequentially via JSON-RPC
     let successCount = 0;
     let failedCount = 0;
 
@@ -549,33 +693,166 @@
       })
       .then(res => res.json())
       .then(data => {
-        if (data && data.result) {
-          successCount++;
-        } else {
-          failedCount++;
-        }
+        if (data && data.result) successCount++;
+        else failedCount++;
+
         if (successCount + failedCount === urls.length) {
           if (successCount > 0) {
-            showToast(`✅ ${successCount} downloads queued in Motrix / Aria2!`, 'bolt');
+            showToast(`✅ ${successCount} downloads queued in Motrix!`, 'bolt', true);
           } else {
-            showToast(`⚠️ Could not reach Aria2/Motrix on ${rpcEndpoint}. Make sure it is running.`, 'shield');
+            showToast(`⚠️ Could not reach Aria2 on ${rpcEndpoint}.`, 'shield', true);
           }
         }
       })
       .catch(() => {
         failedCount++;
         if (successCount + failedCount === urls.length && successCount === 0) {
-          showToast(`⚠️ Aria2/Motrix not running on ${rpcEndpoint}. Please start Motrix.`, 'shield');
+          showToast(`⚠️ Motrix/Aria2 not running on ${rpcEndpoint}.`, 'shield', true);
         }
       });
     });
   }
 
-  // 14. Google Drive Quota & TeraBox Unlocker
+  // 16. Web Asset & API Payload Sniffer (Developer Tool)
+  function sniffAndShowPageAssets() {
+    // 1. Collect SVGs
+    const svgs = [];
+    document.querySelectorAll('svg').forEach((svg, idx) => {
+      const clone = svg.cloneNode(true);
+      if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svgs.push({
+        id: idx + 1,
+        code: clone.outerHTML,
+        width: svg.clientWidth || svg.getAttribute('width') || 'auto',
+        height: svg.clientHeight || svg.getAttribute('height') || 'auto'
+      });
+    });
+
+    // 2. Collect Images & Media
+    const images = [];
+    const seenImg = new Set();
+    document.querySelectorAll('img, picture source').forEach((el) => {
+      const src = el.currentSrc || el.src || el.getAttribute('data-src');
+      if (src && !src.startsWith('data:') && !seenImg.has(src)) {
+        seenImg.add(src);
+        images.push({ url: src, name: src.split('/').pop().split('?')[0] || 'image' });
+      }
+    });
+
+    // 3. Collect Hidden State / API Endpoints
+    const apiData = [];
+    if (window.__NEXT_DATA__) {
+      apiData.push({ label: 'Next.js __NEXT_DATA__', data: JSON.stringify(window.__NEXT_DATA__, null, 2) });
+    }
+    if (window.__NUXT__) {
+      apiData.push({ label: 'Nuxt.js __NUXT__', data: JSON.stringify(window.__NUXT__, null, 2) });
+    }
+
+    // Render Asset Sniffer Drawer
+    let drawer = document.getElementById('directdrop-sniffer-drawer');
+    if (drawer) drawer.remove();
+
+    drawer = document.createElement('div');
+    drawer.id = 'directdrop-sniffer-drawer';
+    drawer.innerHTML = `
+      <div id="directdrop-grabber-backdrop">
+        <div id="directdrop-grabber-modal" style="max-width: 800px;">
+          <div class="directdrop-modal-header">
+            <div class="directdrop-modal-title">🕵️ Web Asset & API Sniffer (${svgs.length} SVGs, ${images.length} Images)</div>
+            <button class="directdrop-modal-close" id="btnCloseSniffer">&times;</button>
+          </div>
+          
+          <div class="directdrop-filter-row">
+            <button class="directdrop-pill-btn active" id="tabSniffSvg">SVGs (${svgs.length})</button>
+            <button class="directdrop-pill-btn" id="tabSniffImg">Images (${images.length})</button>
+            <button class="directdrop-pill-btn" id="tabSniffApi">Data & APIs (${apiData.length})</button>
+          </div>
+
+          <div class="directdrop-links-list" id="snifferContent" style="max-height: 380px;"></div>
+
+          <div class="directdrop-modal-actions">
+            <span style="font-size: 11px; color: #71717a;">Dev Mode: Inspect & extract frontend assets</span>
+            <button class="directdrop-btn" id="btnDownloadAllSvg">⬇ Download All SVGs</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(drawer);
+
+    const contentBox = document.getElementById('snifferContent');
+    const closeBtn = document.getElementById('btnCloseSniffer');
+    closeBtn.onclick = () => drawer.remove();
+
+    function showSvgTab() {
+      contentBox.innerHTML = svgs.map(s => `
+        <div class="directdrop-link-row">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: #18181b; border-radius: 4px;">
+              ${s.code}
+            </div>
+            <span style="font-size: 11px; color: #a1a1aa; font-family: monospace;">SVG #${s.id} (${s.width}x${s.height})</span>
+          </div>
+          <button class="directdrop-btn directdrop-btn-secondary" style="padding: 4px 8px; font-size: 10px;" onclick="navigator.clipboard.writeText(${escapeQuotes(s.code)})">Copy Code</button>
+        </div>
+      `).join('') || '<div style="color: #71717a; text-align: center; padding: 20px;">No SVG icons found.</div>';
+    }
+
+    function showImgTab() {
+      contentBox.innerHTML = images.map(img => `
+        <div class="directdrop-link-row">
+          <span style="font-size: 12px; color: #f4f4f5; word-break: break-all;">${escapeHtml(img.name)}</span>
+          <a href="${img.url}" target="_blank" class="directdrop-btn" style="padding: 4px 8px; font-size: 10px; text-decoration: none;">View</a>
+        </div>
+      `).join('') || '<div style="color: #71717a; text-align: center; padding: 20px;">No images found.</div>';
+    }
+
+    function showApiTab() {
+      contentBox.innerHTML = apiData.map(d => `
+        <div style="background: #09090b; padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); margin-bottom: 8px;">
+          <strong style="color: #06b6d4; font-size: 12px;">${escapeHtml(d.label)}</strong>
+          <pre style="max-height: 120px; overflow: auto; font-size: 10px; color: #a1a1aa; margin-top: 6px;">${escapeHtml(d.data.substring(0, 1000))}...</pre>
+        </div>
+      `).join('') || '<div style="color: #71717a; text-align: center; padding: 20px;">No exposed Next.js or Nuxt.js JSON states detected.</div>';
+    }
+
+    document.getElementById('tabSniffSvg').onclick = (e) => {
+      document.querySelectorAll('.directdrop-pill-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      showSvgTab();
+    };
+
+    document.getElementById('tabSniffImg').onclick = (e) => {
+      document.querySelectorAll('.directdrop-pill-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      showImgTab();
+    };
+
+    document.getElementById('tabSniffApi').onclick = (e) => {
+      document.querySelectorAll('.directdrop-pill-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      showApiTab();
+    };
+
+    document.getElementById('btnDownloadAllSvg').onclick = () => {
+      svgs.forEach((s, idx) => {
+        downloadAsFile(s.code, `icon_${idx + 1}.svg`, 'image/svg+xml');
+      });
+      showToast(`⬇ Downloaded ${svgs.length} SVGs!`, 'bolt', true);
+    };
+
+    // Initial show
+    showSvgTab();
+  }
+
+  function escapeQuotes(str) {
+    return JSON.stringify(str);
+  }
+
+  // 17. Google Drive Quota & TeraBox Unlocker
   function cloudLockerUnlocker() {
     if (!config.enabled || !config.cloudUnlocker) return;
 
-    // Detect Google Drive "quota exceeded"
     if (window.location.hostname.includes('drive.google.com') && document.body?.innerText?.includes('quota exceeded')) {
       const fileId = new URL(window.location.href).searchParams.get('id');
       if (fileId && !document.getElementById('directdrop-gdrive-bypass')) {
@@ -591,7 +868,7 @@
     }
   }
 
-  // 15. Video Stream Sniffer
+  // 18. Video Stream Sniffer
   function sniffVideoStreams() {
     if (!config.enabled || !config.streamSniffer) return;
 
@@ -629,7 +906,7 @@
     });
   }
 
-  // 16. Master Protection Cycle
+  // 19. Master Protection Cycle
   function runProtectionCycle() {
     neutralizeTraps();
     defeatAntiAdblock();
@@ -660,5 +937,5 @@
     subtree: true
   });
 
-  console.log('[DirectDrop Pro v3.0 OLED] ⚡ Pitch-Black God Mode Active (Quality Tabs, Motrix RPC, Subtitle Finder)');
+  console.log('[DirectDrop Pro v3.5 Dev Edition] ⚡ Silent Mode Active (Python Exporter, Webhooks, Asset Sniffer ready)');
 })();
